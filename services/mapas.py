@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 URL_GEOCODIFICACION = "https://maps.googleapis.com/maps/api/geocode/json"
 URL_RUTAS = "https://routes.googleapis.com/directions/v2:computeRoutes"
-URL_DIRECTIONS = "https://maps.googleapis.com/maps/api/directions/json"  # ← NUEVO
+URL_DIRECTIONS = "https://maps.googleapis.com/maps/api/directions/json"
 CAMPOS_RUTAS = ",".join([
     "routes.distanceMeters",
     "routes.duration",
@@ -170,7 +170,7 @@ def calcular_rutas_google(origen, destino, tipo_vehiculo, clave_api, tiempo_espe
         return _calcular_rutas_routes_api(origen, destino, tipo_vehiculo, clave_api, tiempo_espera)
     except ErrorGoogleMaps as e:
         error_msg = str(e)
-        if "no devolvió rutas" in error_msg.lower() or "404" in error_msg:
+        if "no devolvió rutas" in error_msg.lower() or "404" in error_msg or "ZERO_RESULTS" in error_msg:
             logger.warning(f"⚠️ Routes API falló: {error_msg[:100]}. Intentando Directions API...")
             return _calcular_rutas_directions_api(origen, destino, tipo_vehiculo, clave_api, tiempo_espera)
         raise
@@ -267,45 +267,12 @@ def _calcular_rutas_routes_api(origen, destino, tipo_vehiculo, clave_api, tiempo
     return rutas
 
 
-def _calcular_rutas_directions_api(origen, destino, tipo_vehiculo, clave_api, tiempo_espera=35):
-    """Calcula rutas usando Directions API (clásica, más compatible)."""
-    tipo_solicitado, _ = _valores_vehiculo(tipo_vehiculo)
-    
-    params = {
-        "origin": f"{origen[0]},{origen[1]}",
-        "destination": f"{destino[0]},{destino[1]}",
-        "key": clave_api,
-        "language": "es",
-        "region": "mx",
-        "alternatives": "true",
-        "units": "metric",
-        "mode": "driving",
-    }
-    
-    if tipo_solicitado == "TRUCK":
-        params["vehicle"] = "truck"
-        params["transit_routing_preference"] = "less_driving"
-    
-    respuesta = requests.get(
-        URL_DIRECTIONS,
-        params=params,
-        timeout=tiempo_espera,
-    )
-    
-    if not respuesta.ok:
-        raise ErrorGoogleMaps(f"Directions API: Error HTTP {respuesta.status_code}")
-    
-    datos = respuesta.json()
-    
-    if datos.get("status") != "OK":
-        raise ErrorGoogleMaps(f"Directions API: {datos.get('status')} - {datos.get('error_message', '')}")
-    
+def _procesar_directions_response(datos, tipo_solicitado, origen_str, destino_str):
+    """Procesa la respuesta de Directions API y la convierte al formato esperado."""
     rutas = []
     for indice, ruta in enumerate(datos.get("routes", [])):
-        # Extraer polilínea
         polyline = ruta.get("overview_polyline", {}).get("points", "")
         
-        # Extraer distancia y duración
         legs = ruta.get("legs", [])
         distancia_m = 0
         duracion_s = 0
@@ -314,13 +281,11 @@ def _calcular_rutas_directions_api(origen, destino, tipo_vehiculo, clave_api, ti
         for leg in legs:
             distancia_m += leg.get("distance", {}).get("value", 0)
             duracion_s += leg.get("duration", {}).get("value", 0)
-            # Verificar si hay peajes en los pasos
             for step in leg.get("steps", []):
                 if "toll" in str(step.get("html_instructions", "")).lower():
                     has_tolls = True
         
-        # Estimación de peaje (Directions API no da costo exacto)
-        toll_cost = 150.0 if has_tolls else 0.0  # Estimación simple
+        toll_cost = 150.0 if has_tolls else 0.0
         
         rutas.append({
             "index": indice,
@@ -337,7 +302,7 @@ def _calcular_rutas_directions_api(origen, destino, tipo_vehiculo, clave_api, ti
             "vehicle_type": tipo_solicitado,
             "emission_type": "GASOLINE" if tipo_solicitado == "GASOLINE" else "DIESEL",
             "toll_warnings": ["Costo de peaje estimado (Directions API)"] if has_tolls else [],
-            "source": "Directions API (fallback)",
+            "source": f"Directions API (fallback)",
         })
     
     if not rutas:
@@ -345,6 +310,72 @@ def _calcular_rutas_directions_api(origen, destino, tipo_vehiculo, clave_api, ti
     
     logger.info(f"✅ Directions API devolvió {len(rutas)} rutas (fallback)")
     return rutas
+
+
+def _calcular_rutas_directions_api(origen, destino, tipo_vehiculo, clave_api, tiempo_espera=35):
+    """Calcula rutas usando Directions API (clásica, más compatible)."""
+    tipo_solicitado, _ = _valores_vehiculo(tipo_vehiculo)
+    
+    # Intentar con diferentes formatos de coordenadas
+    origenes_a_probar = [
+        f"{origen[0]},{origen[1]}",
+        f"{round(origen[0], 5)},{round(origen[1], 5)}",
+    ]
+    destinos_a_probar = [
+        f"{destino[0]},{destino[1]}",
+        f"{round(destino[0], 5)},{round(destino[1], 5)}",
+    ]
+    
+    ultimo_error = None
+    
+    for orig_str in origenes_a_probar:
+        for dest_str in destinos_a_probar:
+            try:
+                params = {
+                    "origin": orig_str,
+                    "destination": dest_str,
+                    "key": clave_api,
+                    "language": "es",
+                    "region": "mx",
+                    "alternatives": "true",
+                    "units": "metric",
+                    "mode": "driving",
+                }
+                
+                if tipo_solicitado == "TRUCK":
+                    params["vehicle"] = "truck"
+                
+                respuesta = requests.get(
+                    URL_DIRECTIONS,
+                    params=params,
+                    timeout=tiempo_espera,
+                )
+                
+                if not respuesta.ok:
+                    continue
+                
+                datos = respuesta.json()
+                status = datos.get("status")
+                
+                if status == "OK":
+                    return _procesar_directions_response(datos, tipo_solicitado, orig_str, dest_str)
+                elif status == "ZERO_RESULTS":
+                    ultimo_error = f"ZERO_RESULTS para {orig_str} → {dest_str}"
+                    continue
+                else:
+                    ultimo_error = f"{status} - {datos.get('error_message', '')}"
+                    continue
+                    
+            except Exception as e:
+                ultimo_error = str(e)
+                continue
+    
+    # Si llegamos aquí, todos los intentos fallaron
+    raise ErrorGoogleMaps(
+        f"No se encontró una ruta entre estos puntos. "
+        f"Verifica que ambas direcciones sean correctas y estén conectadas por carretera. "
+        f"Detalles: {ultimo_error or 'sin detalles adicionales'}"
+    )
 
 
 def calcular_viaje(
@@ -356,7 +387,7 @@ def calcular_viaje(
     clave_api,
     tiempo_espera,
     zonas,
-    usar_optimizacion=True,
+    usar_optimizacion=False,  # Desactivado por defecto para velocidad
 ):
     lugar_origen = geocodificar(origen, clave_api, tiempo_espera)
     lugar_destino = geocodificar(destino, clave_api, tiempo_espera)
@@ -377,7 +408,7 @@ def calcular_viaje(
         try:
             logger.info("🔄 Aplicando optimización Hill Climbing...")
             optimizador = OptimizadorRutas({
-                "max_iteraciones": 20,  # Reducido para velocidad
+                "max_iteraciones": 20,
                 "penalizacion_zona_roja": 100.0,
                 "peso_distancia": 1.0,
                 "peso_peaje": 0.5,
@@ -401,7 +432,7 @@ def calcular_viaje(
                 mejor_ruta, mejor_costo = optimizador.hill_climbing_multi_inicio(
                     rutas_para_optimizar,
                     zonas_rojas=zonas,
-                    iteraciones_por_ruta=15  # Reducido para velocidad
+                    iteraciones_por_ruta=15
                 )
                 
                 if mejor_ruta and "coordinates" in mejor_ruta:
