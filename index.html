@@ -60,14 +60,6 @@
             background: #8B6B4A;
             transform: translateY(-2px);
         }
-        .error {
-            color: #c62828;
-            margin-top: 15px;
-            padding: 10px;
-            background: #ffebee;
-            border-radius: 10px;
-            display: none;
-        }
         .loading {
             margin-top: 15px;
             color: #8B7355;
@@ -89,20 +81,20 @@
             🚀 Iniciar Viaje
         </button>
         
-        <div id="error" class="error"></div>
         <div id="loading" class="loading">Cargando aplicación...</div>
     </div>
 
     <script>
-        document.getElementById('btnIniciar').addEventListener('click', function() {
-            // Intentar ir al mapa
-            window.location.href = '/mapa';
-        });
+        // Intentar cargar el mapa desde la función de Netlify
+        function irAlMapa() {
+            // Usar la URL completa de la función
+            window.location.href = '/.netlify/functions/api/mapa';
+        }
 
-        // Intentar cargar automáticamente
-        setTimeout(function() {
-            window.location.href = '/mapa';
-        }, 2000);
+        document.getElementById('btnIniciar').addEventListener('click', irAlMapa);
+
+        // Intentar cargar automáticamente después de 2 segundos
+        setTimeout(irAlMapa, 2000);
     </script>
 </body>
 </html>
