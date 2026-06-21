@@ -1,68 +1,108 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0; url=/mapa">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GPS - Rutas Seguras</title>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #FAF5EF 0%, #EEDCC7 100%);
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            background: linear-gradient(135deg, #FAF5EF 0%, #EEDCC7 100%);
-            margin: 0;
         }
         .container {
-            text-align: center;
-            padding: 40px;
             background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(92, 64, 51, 0.15);
+            padding: 50px;
+            border-radius: 30px;
+            box-shadow: 0 20px 60px rgba(92,64,51,0.15);
+            text-align: center;
+            max-width: 500px;
         }
         h1 {
             color: #5C4033;
+            font-size: 2.5rem;
         }
-        .spinner {
-            border: 4px solid #E8D5C4;
-            border-top: 4px solid #B8865F;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
+        .subtitle {
+            color: #8B7355;
+            margin: 10px 0 20px;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .features {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        .feature {
+            background: #FAF5EF;
+            padding: 8px 16px;
+            border-radius: 20px;
+            color: #5C4033;
         }
         .btn {
             display: inline-block;
-            padding: 12px 30px;
+            padding: 16px 40px;
             background: #B8865F;
             color: white;
             text-decoration: none;
             border-radius: 50px;
             font-weight: 600;
-            margin-top: 15px;
+            font-size: 1.1rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
         }
         .btn:hover {
             background: #8B6B4A;
+            transform: translateY(-2px);
+        }
+        .error {
+            color: #c62828;
+            margin-top: 15px;
+            padding: 10px;
+            background: #ffebee;
+            border-radius: 10px;
+            display: none;
+        }
+        .loading {
+            margin-top: 15px;
+            color: #8B7355;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📍 GPS - Rutas Seguras</h1>
-        <div class="spinner"></div>
-        <p>Cargando aplicación...</p>
-        <a href="/mapa" class="btn">Ir al mapa</a>
+        <h1>📍 GPS</h1>
+        <p class="subtitle">Rutas Seguras</p>
+        
+        <div class="features">
+            <span class="feature">🛣️ Rutas optimizadas</span>
+            <span class="feature">⚠️ Zonas de riesgo</span>
+            <span class="feature">💰 Cálculo de costos</span>
+        </div>
+
+        <button class="btn" id="btnIniciar">
+            🚀 Iniciar Viaje
+        </button>
+        
+        <div id="error" class="error"></div>
+        <div id="loading" class="loading">Cargando aplicación...</div>
     </div>
+
     <script>
+        document.getElementById('btnIniciar').addEventListener('click', function() {
+            // Intentar ir al mapa
+            window.location.href = '/mapa';
+        });
+
+        // Intentar cargar automáticamente
         setTimeout(function() {
             window.location.href = '/mapa';
-        }, 1500);
+        }, 2000);
     </script>
 </body>
 </html>
