@@ -13,6 +13,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            flex-direction: column;
         }
         .container {
             background: white;
@@ -21,6 +22,7 @@
             box-shadow: 0 20px 60px rgba(92,64,51,0.15);
             text-align: center;
             max-width: 500px;
+            width: 90%;
         }
         h1 {
             color: #5C4033;
@@ -42,6 +44,7 @@
             padding: 8px 16px;
             border-radius: 20px;
             color: #5C4033;
+            font-size: 0.9rem;
         }
         .btn {
             display: inline-block;
@@ -64,10 +67,29 @@
             margin-top: 15px;
             color: #8B7355;
         }
+        .error {
+            margin-top: 15px;
+            color: #c62828;
+            background: #ffebee;
+            padding: 10px;
+            border-radius: 10px;
+            display: none;
+        }
+        #mapa-container {
+            width: 100%;
+            height: 100vh;
+            display: none;
+        }
+        #mapa-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
+    <!-- Pantalla de inicio -->
+    <div id="inicio" class="container">
         <h1>📍 GPS</h1>
         <p class="subtitle">Rutas Seguras</p>
         
@@ -82,19 +104,68 @@
         </button>
         
         <div id="loading" class="loading">Cargando aplicación...</div>
+        <div id="error" class="error"></div>
+    </div>
+
+    <!-- Contenedor del mapa (oculto inicialmente) -->
+    <div id="mapa-container">
+        <iframe id="mapa-iframe" src=""></iframe>
     </div>
 
     <script>
-        // Intentar cargar el mapa desde la función de Netlify
-        function irAlMapa() {
-            // Usar la URL completa de la función
-            window.location.href = '/.netlify/functions/api/mapa';
+        // Función para cargar el mapa
+        function cargarMapa() {
+            const inicio = document.getElementById('inicio');
+            const mapaContainer = document.getElementById('mapa-container');
+            const iframe = document.getElementById('mapa-iframe');
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+
+            loading.textContent = 'Cargando mapa...';
+
+            // Intentar cargar el mapa usando la función de Netlify
+            const url = '/.netlify/functions/api/mapa';
+            
+            // Usar fetch para probar si la URL funciona
+            fetch(url)
+                .then(response => {
+                    if (response.ok) {
+                        // Si funciona, mostrar el iframe
+                        iframe.src = url;
+                        inicio.style.display = 'none';
+                        mapaContainer.style.display = 'block';
+                    } else {
+                        throw new Error('Error al cargar el mapa (status: ' + response.status + ')');
+                    }
+                })
+                .catch(err => {
+                    // Si falla, intentar con la URL alternativa
+                    loading.textContent = 'Intentando con URL alternativa...';
+                    
+                    const urlAlternativa = '/mapa';
+                    fetch(urlAlternativa)
+                        .then(response => {
+                            if (response.ok) {
+                                iframe.src = urlAlternativa;
+                                inicio.style.display = 'none';
+                                mapaContainer.style.display = 'block';
+                            } else {
+                                throw new Error('Error al cargar el mapa (status: ' + response.status + ')');
+                            }
+                        })
+                        .catch(err2 => {
+                            error.style.display = 'block';
+                            error.textContent = '❌ No se pudo cargar el mapa. Error: ' + err2.message;
+                            loading.textContent = 'Intenta nuevamente';
+                        });
+                });
         }
 
-        document.getElementById('btnIniciar').addEventListener('click', irAlMapa);
+        // Evento del botón
+        document.getElementById('btnIniciar').addEventListener('click', cargarMapa);
 
-        // Intentar cargar automáticamente después de 2 segundos
-        setTimeout(irAlMapa, 2000);
+        // Intentar cargar automáticamente después de 3 segundos
+        setTimeout(cargarMapa, 3000);
     </script>
 </body>
 </html>
