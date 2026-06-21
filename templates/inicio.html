@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS - Rutas Seguras</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="inicio-body">
+    <div class="inicio-container">
+        <div class="inicio-card">
+            <!-- Logo o ícono -->
+            <div class="inicio-icono">
+                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                    <circle cx="12" cy="9" r="3"/>
+                    <path d="M12 22v-4"/>
+                </svg>
+            </div>
+
+            <h1 class="inicio-titulo"> Rutas Seguras</h1>
+            <p class="inicio-subtitulo">Encuentra la mejor ruta evitando zonas de riesgo</p>
+            
+            <div class="inicio-caracteristicas">
+                <div class="caracteristica">
+                    <span class="caracteristica-icono"></span>
+                    <span>Rutas optimizadas</span>
+                </div>
+                <div class="caracteristica">
+                    <span class="caracteristica-icono"></span>
+                    <span>Zonas de riesgo</span>
+                </div>
+                <div class="caracteristica">
+                    <span class="caracteristica-icono"></span>
+                    <span>Cálculo de costos</span>
+                </div>
+            </div>
+
+            <button id="botonIniciar" class="inicio-boton">
+                Iniciar Viaje
+                <span class="inicio-boton-icono">→</span>
+            </button>
+
+            <p class="inicio-pie"></p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('botonIniciar').addEventListener('click', function() {
+            window.location.href = '/mapa';
+        });
+    </script>
+</body>
+</html>
