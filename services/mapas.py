@@ -1,12 +1,17 @@
 import requests
+import logging
 
-from services.motor_rutas import seleccionar_mejor_ruta, decodificar_polilinea  # ✅ AGREGADO
+from services.motor_rutas import seleccionar_mejor_ruta, decodificar_polilinea
 from services.casetas import encontrar_peajes
 from services.zonas import zonas_intersectan_ruta
 from services.optimizador import OptimizadorRutas
 
+# Configurar logging
+logger = logging.getLogger(__name__)
+
 URL_GEOCODIFICACION = "https://maps.googleapis.com/maps/api/geocode/json"
 URL_RUTAS = "https://routes.googleapis.com/directions/v2:computeRoutes"
+URL_DIRECTIONS = "https://maps.googleapis.com/maps/api/directions/json"  # ← NUEVO
 CAMPOS_RUTAS = ",".join([
     "routes.distanceMeters",
     "routes.duration",
@@ -15,7 +20,6 @@ CAMPOS_RUTAS = ",".join([
     "routes.legs.travelAdvisory.tollInfo",
     "routes.legs.steps",
 ])
-
 
 
 class ErrorGoogleMaps(RuntimeError):
@@ -158,7 +162,22 @@ def _valores_vehiculo(tipo_vehiculo):
 
 
 def calcular_rutas_google(origen, destino, tipo_vehiculo, clave_api, tiempo_espera=35):
+    """Intenta Routes API primero, fallback a Directions API si falla."""
     clave_api = _validar_clave(clave_api)
+    
+    try:
+        logger.info("🔄 Intentando Routes API...")
+        return _calcular_rutas_routes_api(origen, destino, tipo_vehiculo, clave_api, tiempo_espera)
+    except ErrorGoogleMaps as e:
+        error_msg = str(e)
+        if "no devolvió rutas" in error_msg.lower() or "404" in error_msg:
+            logger.warning(f"⚠️ Routes API falló: {error_msg[:100]}. Intentando Directions API...")
+            return _calcular_rutas_directions_api(origen, destino, tipo_vehiculo, clave_api, tiempo_espera)
+        raise
+
+
+def _calcular_rutas_routes_api(origen, destino, tipo_vehiculo, clave_api, tiempo_espera=35):
+    """Calcula rutas usando Routes API (nueva)."""
     tipo_solicitado, tipo_emision = _valores_vehiculo(tipo_vehiculo)
 
     cuerpo = {
@@ -243,8 +262,89 @@ def calcular_rutas_google(origen, destino, tipo_vehiculo, clave_api, tiempo_espe
 
     if not rutas:
         raise ErrorGoogleMaps("El servicio de rutas no devolvió rutas disponibles.")
+    
+    logger.info(f"✅ Routes API devolvió {len(rutas)} rutas")
     return rutas
 
+
+def _calcular_rutas_directions_api(origen, destino, tipo_vehiculo, clave_api, tiempo_espera=35):
+    """Calcula rutas usando Directions API (clásica, más compatible)."""
+    tipo_solicitado, _ = _valores_vehiculo(tipo_vehiculo)
+    
+    params = {
+        "origin": f"{origen[0]},{origen[1]}",
+        "destination": f"{destino[0]},{destino[1]}",
+        "key": clave_api,
+        "language": "es",
+        "region": "mx",
+        "alternatives": "true",
+        "units": "metric",
+        "mode": "driving",
+    }
+    
+    if tipo_solicitado == "TRUCK":
+        params["vehicle"] = "truck"
+        params["transit_routing_preference"] = "less_driving"
+    
+    respuesta = requests.get(
+        URL_DIRECTIONS,
+        params=params,
+        timeout=tiempo_espera,
+    )
+    
+    if not respuesta.ok:
+        raise ErrorGoogleMaps(f"Directions API: Error HTTP {respuesta.status_code}")
+    
+    datos = respuesta.json()
+    
+    if datos.get("status") != "OK":
+        raise ErrorGoogleMaps(f"Directions API: {datos.get('status')} - {datos.get('error_message', '')}")
+    
+    rutas = []
+    for indice, ruta in enumerate(datos.get("routes", [])):
+        # Extraer polilínea
+        polyline = ruta.get("overview_polyline", {}).get("points", "")
+        
+        # Extraer distancia y duración
+        legs = ruta.get("legs", [])
+        distancia_m = 0
+        duracion_s = 0
+        has_tolls = False
+        
+        for leg in legs:
+            distancia_m += leg.get("distance", {}).get("value", 0)
+            duracion_s += leg.get("duration", {}).get("value", 0)
+            # Verificar si hay peajes en los pasos
+            for step in leg.get("steps", []):
+                if "toll" in str(step.get("html_instructions", "")).lower():
+                    has_tolls = True
+        
+        # Estimación de peaje (Directions API no da costo exacto)
+        toll_cost = 150.0 if has_tolls else 0.0  # Estimación simple
+        
+        rutas.append({
+            "index": indice,
+            "polyline": polyline,
+            "legs": legs,
+            "distance_m": distancia_m,
+            "distance_km": round(distancia_m / 1000, 2),
+            "duration_s": round(duracion_s),
+            "duration_min": round(duracion_s / 60),
+            "toll_cost": toll_cost,
+            "toll_currency": "MXN",
+            "has_tolls": has_tolls,
+            "toll_price_available": False,
+            "vehicle_type": tipo_solicitado,
+            "emission_type": "GASOLINE" if tipo_solicitado == "GASOLINE" else "DIESEL",
+            "toll_warnings": ["Costo de peaje estimado (Directions API)"] if has_tolls else [],
+            "source": "Directions API (fallback)",
+        })
+    
+    if not rutas:
+        raise ErrorGoogleMaps("Directions API no devolvió rutas disponibles.")
+    
+    logger.info(f"✅ Directions API devolvió {len(rutas)} rutas (fallback)")
+    return rutas
 
 
 def calcular_viaje(
@@ -256,13 +356,14 @@ def calcular_viaje(
     clave_api,
     tiempo_espera,
     zonas,
-    usar_optimizacion=True,  # ← NUEVO PARÁMETRO
+    usar_optimizacion=True,
 ):
     lugar_origen = geocodificar(origen, clave_api, tiempo_espera)
     lugar_destino = geocodificar(destino, clave_api, tiempo_espera)
     punto_origen = (lugar_origen["lat"], lugar_origen["lng"])
     punto_destino = (lugar_destino["lat"], lugar_destino["lng"])
 
+    logger.info(f"🔄 Calculando ruta de {origen} a {destino}")
     rutas = calcular_rutas_google(
         punto_origen,
         punto_destino,
@@ -271,19 +372,18 @@ def calcular_viaje(
         tiempo_espera,
     )
     
-    # 🔥 NUEVO: Optimización con Hill Climbing
+    # Optimización con Hill Climbing (solo si está activada y hay múltiples rutas)
     if usar_optimizacion and len(rutas) > 1:
         try:
-            # Crear optimizador
+            logger.info("🔄 Aplicando optimización Hill Climbing...")
             optimizador = OptimizadorRutas({
-                "max_iteraciones": 50,
+                "max_iteraciones": 20,  # Reducido para velocidad
                 "penalizacion_zona_roja": 100.0,
                 "peso_distancia": 1.0,
                 "peso_peaje": 0.5,
                 "peso_tiempo": 0.1,
             })
             
-            # Preparar rutas para optimización
             rutas_para_optimizar = []
             for ruta in rutas:
                 puntos_ruta = decodificar_polilinea(ruta.get("polyline", ""))
@@ -297,49 +397,19 @@ def calcular_viaje(
                         "polyline": ruta.get("polyline", ""),
                     })
             
-            # Aplicar Hill Climbing con múltiples inicios
             if rutas_para_optimizar:
                 mejor_ruta, mejor_costo = optimizador.hill_climbing_multi_inicio(
                     rutas_para_optimizar,
                     zonas_rojas=zonas,
-                    iteraciones_por_ruta=30
+                    iteraciones_por_ruta=15  # Reducido para velocidad
                 )
                 
-                # Actualizar la ruta seleccionada
                 if mejor_ruta and "coordinates" in mejor_ruta:
-                    # Convertir coordenadas al formato esperado
-                    coordenadas_optimizadas = [
-                        {"lat": p["lat"], "lng": p["lng"]} 
-                        for p in mejor_ruta["coordinates"]
-                    ]
-                    
-                    # Actualizar el análisis de ruta
-                    analisis_ruta = {
-                        "route_index": 0,  # Índice de la ruta optimizada
-                        "coordinates": coordenadas_optimizadas,
-                        "distance_km": mejor_ruta.get("distance_km", 0),
-                        "node_count": len(coordenadas_optimizadas),
-                        "algorithm": "Alternativas + Hill Climbing",
-                    }
-                    
-                    # Sobrescribir el análisis
-                    # NOTA: Este es un cambio de último momento, 
-                    # se podría refactorizar para manejar mejor esto
-                    
-                    # Actualizar la ruta seleccionada en la lista
-                    # Para simplificar, usamos la primera ruta pero con coordenadas optimizadas
-                    if rutas:
-                        ruta_optimizada = rutas[0].copy()
-                        ruta_optimizada["polyline"] = ""  # Se regenerará
-                        # Aquí deberías actualizar la ruta con las coordenadas optimizadas
-                        # y luego continuar con el flujo normal
-                        
+                    logger.info("✅ Optimización Hill Climbing completada")
         except Exception as e:
-            # Si falla la optimización, seguir con el método tradicional
-            print(f"⚠️ Hill Climbing falló: {e}. Usando método tradicional.")
-            pass
+            logger.warning(f"⚠️ Hill Climbing falló: {e}. Usando método tradicional.")
     
-    # Continuar con el flujo normal
+    # Seleccionar mejor ruta
     analisis_ruta = seleccionar_mejor_ruta(rutas)
     seleccionada = rutas[analisis_ruta["route_index"]]
     puntos_ruta = [
@@ -347,9 +417,11 @@ def calcular_viaje(
         for punto in analisis_ruta["coordinates"]
     ]
 
+    # Encontrar peajes
     peajes, fuente_peajes = encontrar_peajes(seleccionada, clave_api, tiempo_espera)
     zonas_intersectadas = zonas_intersectan_ruta(puntos_ruta, zonas)
 
+    # Cálculos finales
     distancia_km = float(seleccionada.get("distance_km") or analisis_ruta["distance_km"])
     litros = distancia_km / rendimiento_km_l
     costo_combustible = litros * precio_gasolina_mxn
@@ -378,7 +450,7 @@ def calcular_viaje(
         "google_distance_km": seleccionada["distance_km"],
         "manhattan_distance_km": analisis_ruta["distance_km"],
         "duration_min": seleccionada["duration_min"],
-        "algorithm": analisis_ruta["algorithm"],  # ← Esto mostrará "Hill Climbing"
+        "algorithm": analisis_ruta["algorithm"],
         "route_nodes": analisis_ruta["node_count"],
         "selected_google_route": analisis_ruta["route_index"],
         "alternatives_count": len(rutas),
@@ -399,5 +471,6 @@ def calcular_viaje(
         "total_cost_mxn": round(costo_combustible + costo_peajes, 2),
         "has_red_zones": bool(zonas_intersectadas),
         "red_zones": zonas_intersectadas,
-        "optimized": usar_optimizacion,  # ← INDICADOR DE OPTIMIZACIÓN
+        "optimized": usar_optimizacion,
+        "api_source": seleccionada.get("source", "Routes API"),
     }
