@@ -30,8 +30,13 @@ app = crear_aplicacion()
 
 # Para ejecución local
 if __name__ == "__main__":
+    # 🔥 NUEVO: Configuración para Render
+    # Render asigna el puerto en la variable de entorno PORT
+    port = int(os.environ.get("PORT", app.config.get("PUERTO", 5000)))
+    debug = os.environ.get("DEBUG", "False").lower() == "true"
+    
     app.run(
-        host=app.config.get("SERVIDOR", "0.0.0.0"),
-        port=app.config.get("PUERTO", 5000),
-        debug=app.config.get("DEPURACION", True),
+        host="0.0.0.0",  # Siempre 0.0.0.0 en producción
+        port=port,
+        debug=debug,
     )
