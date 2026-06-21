@@ -7,31 +7,26 @@
   command = "python app.py"
   port = 5000
 
-# Servir archivos estáticos directamente
 [[redirects]]
   from = "/static/*"
   to = "/static/:splat"
   status = 200
 
-# API va a la función
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/api/:splat"
   status = 200
 
-# Mapa usa la función de Flask
 [[redirects]]
   from = "/mapa"
   to = "/.netlify/functions/api/mapa"
   status = 200
 
-# Ruta raíz muestra index.html estático
 [[redirects]]
   from = "/"
   to = "/index.html"
   status = 200
 
-# Todo lo demás va a la función
 [[redirects]]
   from = "/*"
   to = "/.netlify/functions/api/:splat"

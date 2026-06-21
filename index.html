@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="refresh" content="0; url=/mapa">
+    <title>GPS - Rutas Seguras</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #FAF5EF 0%, #EEDCC7 100%);
+            margin: 0;
+        }
+        .container {
+            text-align: center;
+            padding: 40px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(92, 64, 51, 0.15);
+        }
+        h1 {
+            color: #5C4033;
+        }
+        .spinner {
+            border: 4px solid #E8D5C4;
+            border-top: 4px solid #B8865F;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #B8865F;
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            margin-top: 15px;
+        }
+        .btn:hover {
+            background: #8B6B4A;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📍 GPS - Rutas Seguras</h1>
+        <div class="spinner"></div>
+        <p>Cargando aplicación...</p>
+        <a href="/mapa" class="btn">Ir al mapa</a>
+    </div>
+    <script>
+        setTimeout(function() {
+            window.location.href = '/mapa';
+        }, 1500);
+    </script>
+</body>
+</html>
