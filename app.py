@@ -1,8 +1,13 @@
+# app.py
 from flask import Flask
 from configuracion import Configuracion
 from routes import registrar_rutas
 import os
+import logging
 
+# Configurar logging para ver errores
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def crear_aplicacion(configuracion_prueba=None):
     aplicacion = Flask(
@@ -24,19 +29,17 @@ def crear_aplicacion(configuracion_prueba=None):
     registrar_rutas(aplicacion)
     return aplicacion
 
-
 # Para Netlify Functions - DEBE llamarse "app"
 app = crear_aplicacion()
 
 # Para ejecución local
 if __name__ == "__main__":
-    # 🔥 NUEVO: Configuración para Render
-    # Render asigna el puerto en la variable de entorno PORT
     port = int(os.environ.get("PORT", app.config.get("PUERTO", 5000)))
     debug = os.environ.get("DEBUG", "False").lower() == "true"
     
+    logger.info(f"🚀 Iniciando servidor en puerto {port}, debug={debug}")
     app.run(
-        host="0.0.0.0",  # Siempre 0.0.0.0 en producción
+        host="0.0.0.0",
         port=port,
         debug=debug,
     )

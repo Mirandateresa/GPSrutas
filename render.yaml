@@ -1,3 +1,4 @@
+# render.yaml
 services:
   - type: web
     name: gps-rutas-seguras
@@ -8,13 +9,17 @@ services:
     buildCommand: |
       pip install --upgrade pip
       pip install -r requirements.txt
-    startCommand: gunicorn app:app --timeout 120 --workers 2
+    startCommand: gunicorn app:app -c gunicorn.conf.py
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.0
       - key: GOOGLE_MAPS_API_KEY
-        value: AIzaSyBI7-JK1Ll0OQGwG7n0tTdkQAYRDN4f094  # ← TU CLAVE AQUÍ
+        value: AIzaSyBI7-JK1Ll0OQGwG7n0tTdkQAYRDN4f094
       - key: DEBUG
         value: false
       - key: PORT
         value: 10000
+      - key: PYTHONUNBUFFERED
+        value: true
+      - key: TIEMPO_ESPERA_GOOGLE_SEGUNDOS
+        value: 25
