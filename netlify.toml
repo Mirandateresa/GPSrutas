@@ -3,10 +3,6 @@
   functions = "netlify_functions"
   publish = "."
 
-[dev]
-  command = "python app.py"
-  port = 5000
-
 [[redirects]]
   from = "/static/*"
   to = "/static/:splat"
@@ -19,7 +15,7 @@
 
 [[redirects]]
   from = "/mapa"
-  to = "/.netlify/functions/api/mapa"
+  to = "/mapa.html"
   status = 200
 
 [[redirects]]
