@@ -63,13 +63,121 @@
             background: transparent;
             border: none;
         }
-        /* Asegurar que los botones sean clickeables */
         button {
             cursor: pointer !important;
             pointer-events: auto !important;
         }
         .primary-button, .secondary-button, .zones-button {
             pointer-events: auto !important;
+        }
+        .btn-inicio {
+            background: transparent;
+            border: none;
+            font-size: 1.3rem;
+            padding: 6px 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #5C4033;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .btn-inicio:hover {
+            background: #E8D5C4;
+            transform: scale(1.05);
+        }
+        .btn-inicio span {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #8B6B4A;
+        }
+
+        /* ============================================
+           CUADRO FLOTANTE - ESQUINA SUPERIOR DERECHA
+           ============================================ */
+        .cuadro-flotante {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            width: min(350px, calc(100vw - 40px));
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            padding: 16px 18px;
+            border-radius: 20px;
+            background: rgba(255, 251, 247, 0.97);
+            backdrop-filter: blur(16px);
+            box-shadow: 0 18px 45px rgba(92, 64, 51, 0.2);
+            border: 1px solid rgba(212, 165, 116, 0.15);
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+        .cuadro-flotante.hidden {
+            display: none;
+        }
+        .cuadro-flotante .result-block {
+            margin-top: 0 !important;
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: var(--crema-claro);
+            border: 1px solid var(--beige);
+        }
+        .cuadro-flotante .result-block:not(:last-child) {
+            margin-bottom: 12px;
+        }
+        .cuadro-flotante .result-block h3 {
+            margin: 0 0 8px 0;
+            font-size: 0.85rem;
+            color: var(--cafe-texto);
+        }
+        .cuadro-flotante .result-block ul {
+            margin: 0;
+            padding-left: 18px;
+        }
+        .cuadro-flotante .result-block li {
+            margin: 3px 0;
+            color: var(--cafe-texto);
+            font-size: 0.78rem;
+        }
+        .cuadro-flotante .toll-item {
+            padding: 6px 10px;
+            border-radius: 8px;
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            margin-bottom: 4px;
+        }
+        .cuadro-flotante .toll-item strong {
+            display: block;
+            color: #16a34a;
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+        .cuadro-flotante .toll-item span {
+            display: block;
+            margin-top: 2px;
+            color: var(--muted);
+            font-size: 0.7rem;
+        }
+        .cuadro-flotante::-webkit-scrollbar {
+            width: 4px;
+        }
+        .cuadro-flotante::-webkit-scrollbar-track {
+            background: var(--crema-claro);
+            border-radius: 10px;
+        }
+        .cuadro-flotante::-webkit-scrollbar-thumb {
+            background: var(--beige);
+            border-radius: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .cuadro-flotante {
+                top: auto;
+                bottom: 10px;
+                right: 10px;
+                width: calc(100vw - 20px);
+                max-height: 45vh;
+            }
         }
     </style>
 </head>
@@ -93,7 +201,12 @@
                     <h1>Rutas </h1>
                 </div>
             </div>
-            <button id="botonCerrarPanel" class="icon-button" type="button" aria-label="Ocultar panel">✕</button>
+            <div style="display:flex; gap:6px; align-items:center;">
+                <button id="botonVolverInicio" class="btn-inicio" type="button" title="Volver al inicio">
+                    🏠 <span>Inicio</span>
+                </button>
+                <button id="botonCerrarPanel" class="icon-button" type="button" aria-label="Ocultar panel">✕</button>
+            </div>
         </header>
 
         <section class="form-section">
@@ -140,7 +253,7 @@
                 </button>
             </div>
             <p class="map-help">💡 También puedes hacer clic en el mapa para elegir origen y destino.</p>
-            <p class="map-help" style="font-size:0.7rem;color:var(--muted);">🌍 Datos de OpenStreetMap © colaboradores</p>
+            <p class="map-help" style="font-size:0.7rem;color:var(--muted);">🌍 Datos de OpenStreetMap</p>
         </section>
 
         <section class="zones-toolbar">
@@ -156,6 +269,9 @@
             ✅ Mapa listo. Escribe una dirección o selecciona puntos en el mapa.
         </div>
 
+        <!-- ============================================ -->
+        <!-- PANEL DE RESULTADOS - SÓLO MÉTRICAS          -->
+        <!-- ============================================ -->
         <section id="panelResultados" class="results hidden">
             <div class="results-header">
                 <h2>📊 Resultado del viaje</h2>
@@ -169,7 +285,7 @@
                 </article>
                 <article class="metric">
                     <span>⏱️ Duración</span>
-                    <strong id="valorDuracion">0 min</strong>
+                    <strong id="valorDuracion">0h 0min</strong>
                 </article>
                 <article class="metric">
                     <span>⛽ Combustible</span>
@@ -190,18 +306,24 @@
             </div>
 
             <p id="descripcionRuta" class="route-description"></p>
-
-            <div id="resultadoZonasRojas" class="result-block hidden">
-                <h3>⚠️ Zonas rojas detectadas</h3>
-                <ul id="listaZonasRojas"></ul>
-            </div>
-
-            <div id="resultadoPeajes" class="result-block">
-                <h3>🛣️ Casetas y peajes</h3>
-                <div id="listaPeajes" class="tolls-list"></div>
-            </div>
         </section>
     </aside>
+
+    <!-- ============================================ -->
+    <!-- CUADRO FLOTANTE - ESQUINA SUPERIOR DERECHA  -->
+    <!-- ZONAS ROJAS Y PEAJES                        -->
+    <!-- ============================================ -->
+    <div id="cuadroFlotante" class="cuadro-flotante hidden">
+        <div id="resultadoZonasRojas" class="result-block hidden">
+            <h3>⚠️ Zonas rojas detectadas</h3>
+            <ul id="listaZonasRojas"></ul>
+        </div>
+
+        <div id="resultadoPeajes" class="result-block">
+            <h3>🛣️ Casetas y peajes</h3>
+            <div id="listaPeajes" class="tolls-list"></div>
+        </div>
+    </div>
 
     <dialog id="dialogoZona" class="zone-dialog">
         <form id="formularioZona" method="dialog">
@@ -262,859 +384,24 @@
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
+    <!-- ============================================ -->
+    <!-- SCRIPTS SEPARADOS                           -->
+    <!-- ============================================ -->
+    
+    <!-- 1. CONFIGURACIÓN GLOBAL -->
+    <script src="{{ url_for('static', filename='js/config.js') }}"></script>
+    
+    <!-- 2. LÓGICA DEL MAPA (Leaflet, marcadores, rutas) -->
+    <script src="{{ url_for('static', filename='js/mapa.js') }}"></script>
+    
+    <!-- 3. LÓGICA DE LA APLICACIÓN (UI, peticiones, resultados) -->
+    <script src="{{ url_for('static', filename='js/aplicacion.js') }}"></script>
+    
+    <!-- ============================================ -->
+    <!-- INICIO AUTOMÁTICO DEL MAPA                  -->
+    <!-- ============================================ -->
     <script>
-        // ============================================
-        // TODA LA LÓGICA EN UN SOLO SCRIPT
-        // ============================================
-        
-        (function() {
-            'use strict';
-
-            // ---------- CONFIGURACIÓN ----------
-            var TILE_LAYER = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-            var TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
-            var NOMINATIM_URL = 'https://nominatim.openstreetmap.org';
-
-            // ---------- ESTADO GLOBAL ----------
-            window.GPS = {
-                mapa: null,
-                posicionOrigen: null,
-                posicionDestino: null,
-                lineaRuta: null,
-                marcadoresRuta: [],
-                marcadoresPeajes: [],
-                zonas: [],
-                capasZonas: [],
-                zonasVisibles: false,
-                modoColocarZona: false,
-            };
-
-            var mapa = null;
-            var marcadorOrigen = null;
-            var marcadorDestino = null;
-            var marcadoresPeajes = [];
-            var lineaRuta = null;
-            var circulosZonas = [];
-            var marcadoresZonas = [];
-
-            // ---------- UTILIDADES ----------
-            function porId(id) {
-                return document.getElementById(id);
-            }
-
-            function escaparHtml(valor) {
-                return String(valor ?? '')
-                    .replaceAll('&', '&amp;')
-                    .replaceAll('<', '&lt;')
-                    .replaceAll('>', '&gt;')
-                    .replaceAll('"', '&quot;')
-                    .replaceAll("'", '&#039;');
-            }
-
-            function formatearMoneda(valor, codigoMoneda) {
-                codigoMoneda = codigoMoneda || 'MXN';
-                var numero = Number(valor || 0);
-                return new Intl.NumberFormat('es-MX', {
-                    style: 'currency',
-                    currency: codigoMoneda,
-                    maximumFractionDigits: 2,
-                }).format(Number.isFinite(numero) ? numero : 0);
-            }
-
-            function mostrarMensaje(texto, tipo) {
-                tipo = tipo || 'info';
-                var caja = porId('cajaMensaje');
-                caja.textContent = texto;
-                caja.className = 'message ' + (tipo === 'info' ? '' : tipo);
-                caja.style.display = 'block';
-            }
-
-            function ocultarMensaje() {
-                var caja = porId('cajaMensaje');
-                caja.classList.add('hidden');
-                caja.style.display = 'none';
-            }
-
-            function establecerCarga(activo) {
-                var boton = porId('botonCalcular');
-                boton.disabled = activo;
-                boton.textContent = activo ? 'Calculando...' : 'Calcular ruta';
-            }
-
-            async function solicitarJson(url, opciones) {
-                opciones = opciones || {};
-                var respuesta = await fetch(url, {
-                    ...opciones,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(opciones.headers || {}),
-                    },
-                });
-
-                var contenido = await respuesta.json().catch(function() {
-                    return { ok: false, error: 'El servidor devolvió una respuesta no válida.' };
-                });
-
-                if (!respuesta.ok || contenido.ok === false) {
-                    throw new Error(contenido.error || 'Error HTTP ' + respuesta.status);
-                }
-                return contenido;
-            }
-
-            // ---------- GEOCODIFICACIÓN ----------
-            async function geocodificarReversa(lat, lng) {
-                try {
-                    var response = await fetch(
-                        NOMINATIM_URL + '/reverse?lat=' + lat + '&lon=' + lng + '&format=json&accept-language=es',
-                        { headers: { 'User-Agent': 'GPS-RutasSeguras/1.0' } }
-                    );
-                    var data = await response.json();
-                    if (data && data.display_name) {
-                        return data.display_name;
-                    }
-                    return lat.toFixed(6) + ', ' + lng.toFixed(6);
-                } catch (error) {
-                    console.error('Error en geocodificación inversa:', error);
-                    return lat.toFixed(6) + ', ' + lng.toFixed(6);
-                }
-            }
-
-            // ---------- AUTOCOMPLETADO ----------
-            function configurarAutocompletado(idInput, tipo) {
-                var input = porId(idInput);
-                if (!input) return;
-
-                var timeoutId = null;
-                var container = document.createElement('div');
-                container.className = 'autocomplete-suggestions';
-                container.style.cssText = 'position:absolute;background:white;border:2px solid #E8D5C4;border-radius:12px;max-height:200px;overflow-y:auto;z-index:9999;display:none;width:100%;box-shadow:0 18px 45px rgba(92,64,51,0.15);';
-                
-                if (input.parentNode.style.position !== 'relative') {
-                    input.parentNode.style.position = 'relative';
-                }
-                input.parentNode.appendChild(container);
-
-                input.addEventListener('input', function() {
-                    var query = this.value.trim();
-                    if (query.length < 3) {
-                        container.style.display = 'none';
-                        return;
-                    }
-
-                    clearTimeout(timeoutId);
-                    timeoutId = setTimeout(async function() {
-                        try {
-                            var response = await fetch(
-                                NOMINATIM_URL + '/search?q=' + encodeURIComponent(query) + '&format=json&limit=5&countrycodes=mx&accept-language=es',
-                                { headers: { 'User-Agent': 'GPS-RutasSeguras/1.0' } }
-                            );
-                            var data = await response.json();
-                            
-                            container.innerHTML = '';
-                            if (data && data.length > 0) {
-                                data.forEach(function(item) {
-                                    var div = document.createElement('div');
-                                    div.className = 'autocomplete-item';
-                                    div.style.cssText = 'padding:10px 14px;cursor:pointer;border-bottom:1px solid #FAF5EF;font-size:0.9rem;color:#5C4033;transition:background 0.2s ease;';
-                                    div.textContent = item.display_name;
-                                    div.addEventListener('click', function() {
-                                        input.value = item.display_name;
-                                        container.style.display = 'none';
-                                        
-                                        var pos = {
-                                            lat: parseFloat(item.lat),
-                                            lng: parseFloat(item.lon),
-                                        };
-                                        
-                                        if (tipo === 'origen') {
-                                            window.GPS.posicionOrigen = pos;
-                                        } else {
-                                            window.GPS.posicionDestino = pos;
-                                        }
-                                        enfocarPosicion(pos, 14);
-                                        dibujarMarcadoresSeleccion();
-                                        input.blur();
-                                    });
-                                    div.addEventListener('mouseenter', function() {
-                                        this.style.background = '#FAF5EF';
-                                    });
-                                    div.addEventListener('mouseleave', function() {
-                                        this.style.background = 'transparent';
-                                    });
-                                    container.appendChild(div);
-                                });
-                                container.style.display = 'block';
-                            } else {
-                                container.style.display = 'none';
-                            }
-                        } catch (error) {
-                            console.error('Error en autocompletado:', error);
-                            container.style.display = 'none';
-                        }
-                    }, 300);
-                });
-
-                input.addEventListener('blur', function() {
-                    setTimeout(function() {
-                        container.style.display = 'none';
-                    }, 200);
-                });
-
-                input.addEventListener('focus', function() {
-                    if (this.value.trim().length >= 3) {
-                        this.dispatchEvent(new Event('input'));
-                    }
-                });
-            }
-
-            // ---------- SELECCIÓN DE PUNTOS ----------
-            async function seleccionarPuntoRuta(latlng) {
-                var posicion = {
-                    lat: latlng.lat,
-                    lng: latlng.lng,
-                };
-                
-                var origenVacio = !porId('entradaOrigen').value.trim();
-                var destinoVacio = !porId('entradaDestino').value.trim();
-                var objetivo = origenVacio ? 'origen' : (destinoVacio ? 'destino' : 'destino');
-
-                try {
-                    var direccion = await geocodificarReversa(posicion.lat, posicion.lng);
-
-                    if (objetivo === 'origen') {
-                        porId('entradaOrigen').value = direccion;
-                        window.GPS.posicionOrigen = posicion;
-                        mostrarMensaje('Origen seleccionado. Ahora elige el destino.');
-                    } else {
-                        porId('entradaDestino').value = direccion;
-                        window.GPS.posicionDestino = posicion;
-                        mostrarMensaje('Destino seleccionado. Ya puedes calcular la ruta.');
-                    }
-                    dibujarMarcadoresSeleccion();
-                } catch (error) {
-                    mostrarMensaje('No fue posible obtener la dirección del punto seleccionado.', 'error');
-                }
-            }
-
-            function dibujarMarcadoresSeleccion() {
-                if (!mapa) return;
-
-                if (marcadorOrigen) {
-                    mapa.removeLayer(marcadorOrigen);
-                    marcadorOrigen = null;
-                }
-                if (marcadorDestino) {
-                    mapa.removeLayer(marcadorDestino);
-                    marcadorDestino = null;
-                }
-
-                var iconoOrigen = L.divIcon({
-                    className: 'custom-marker',
-                    html: '<div style="background:#2563eb;color:white;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:14px;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);">A</div>',
-                    iconSize: [30, 30],
-                    iconAnchor: [15, 15],
-                });
-
-                var iconoDestino = L.divIcon({
-                    className: 'custom-marker',
-                    html: '<div style="background:#c62828;color:white;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:14px;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);">B</div>',
-                    iconSize: [30, 30],
-                    iconAnchor: [15, 15],
-                });
-
-                if (window.GPS.posicionOrigen) {
-                    marcadorOrigen = L.marker([window.GPS.posicionOrigen.lat, window.GPS.posicionOrigen.lng], {
-                        icon: iconoOrigen,
-                        title: 'Origen',
-                    }).addTo(mapa);
-                }
-
-                if (window.GPS.posicionDestino) {
-                    marcadorDestino = L.marker([window.GPS.posicionDestino.lat, window.GPS.posicionDestino.lng], {
-                        icon: iconoDestino,
-                        title: 'Destino',
-                    }).addTo(mapa);
-                }
-            }
-
-            function enfocarPosicion(posicion, zoom) {
-                if (!mapa) return;
-                mapa.setView([posicion.lat, posicion.lng], zoom || 15);
-            }
-
-            // ---------- DIBUJAR RUTA ----------
-            function dibujarRuta(datos) {
-                limpiarRuta();
-
-                var trayecto = (datos.coordinates || [])
-                    .map(function(punto) { return [Number(punto.lat), Number(punto.lng)]; })
-                    .filter(function(punto) { return Number.isFinite(punto[0]) && Number.isFinite(punto[1]); });
-
-                if (trayecto.length < 2) {
-                    mostrarMensaje('La ruta no contiene coordenadas suficientes para dibujarla.', 'error');
-                    return;
-                }
-
-                lineaRuta = L.polyline(trayecto, {
-                    color: '#2563eb',
-                    weight: 6,
-                    opacity: 0.95,
-                    smoothFactor: 1,
-                }).addTo(mapa);
-
-                var bounds = L.latLngBounds(trayecto);
-                mapa.fitBounds(bounds, { padding: [50, 50] });
-
-                window.GPS.posicionOrigen = {
-                    lat: Number(datos.origin.lat),
-                    lng: Number(datos.origin.lng),
-                };
-                window.GPS.posicionDestino = {
-                    lat: Number(datos.destination.lat),
-                    lng: Number(datos.destination.lng),
-                };
-                dibujarMarcadoresSeleccion();
-
-                dibujarMarcadoresPeajes(datos.tolls || []);
-
-                if (datos.has_red_zones && !window.GPS.zonasVisibles) {
-                    mostrarZonas();
-                }
-            }
-
-            function dibujarMarcadoresPeajes(peajes) {
-                if (!mapa) return;
-                
-                marcadoresPeajes.forEach(function(m) { mapa.removeLayer(m); });
-                marcadoresPeajes = [];
-
-                var iconoPeaje = L.divIcon({
-                    className: 'custom-marker',
-                    html: '<div style="background:#b45309;color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);">$</div>',
-                    iconSize: [28, 28],
-                    iconAnchor: [14, 14],
-                });
-
-                peajes.forEach(function(peaje) {
-                    var lat = Number(peaje.lat);
-                    var lng = Number(peaje.lng);
-                    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-
-                    var marcador = L.marker([lat, lng], {
-                        icon: iconoPeaje,
-                        title: peaje.name || 'Caseta de cobro',
-                    }).addTo(mapa);
-
-                    marcador.bindPopup(
-                        '<strong>' + escaparHtml(peaje.name || 'Caseta') + '</strong><br>' +
-                        '<small>' + escaparHtml(peaje.address || peaje.instruction || peaje.source || '') + '</small>'
-                    );
-
-                    marcadoresPeajes.push(marcador);
-                });
-            }
-
-            function limpiarRuta() {
-                if (!mapa) return;
-                
-                if (lineaRuta) {
-                    mapa.removeLayer(lineaRuta);
-                    lineaRuta = null;
-                }
-                marcadoresPeajes.forEach(function(m) { mapa.removeLayer(m); });
-                marcadoresPeajes = [];
-            }
-
-            // Exponer funciones del mapa
-            window.GPSMapa = {
-                dibujarRuta: dibujarRuta,
-                limpiarRuta: limpiarRuta,
-                enfocarPosicion: enfocarPosicion,
-            };
-
-            // ---------- ZONAS ROJAS ----------
-            async function cargarZonas() {
-                try {
-                    var respuesta = await solicitarJson('/api/zones');
-                    window.GPS.zonas = respuesta.data || [];
-                    if (window.GPS.zonasVisibles) {
-                        dibujarZonas();
-                    }
-                } catch (error) {
-                    mostrarMensaje('No fue posible cargar las zonas: ' + error.message, 'error');
-                }
-            }
-
-            function alternarZonas() {
-                window.GPS.zonasVisibles ? ocultarZonas() : mostrarZonas();
-            }
-
-            function mostrarZonas() {
-                window.GPS.zonasVisibles = true;
-                var btn = porId('botonAlternarZonas');
-                btn.classList.add('active');
-                btn.textContent = 'Ocultar zonas rojas';
-                dibujarZonas();
-            }
-
-            function ocultarZonas() {
-                window.GPS.zonasVisibles = false;
-                var btn = porId('botonAlternarZonas');
-                btn.classList.remove('active');
-                btn.textContent = 'Mostrar zonas rojas';
-                limpiarCapasZonas();
-            }
-
-            function dibujarZonas() {
-                if (!mapa) return;
-                limpiarCapasZonas();
-
-                window.GPS.zonas.forEach(function(zona) {
-                    var lat = Number(zona.lat);
-                    var lng = Number(zona.lng);
-                    var radio = Number(zona.radius_m);
-                    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-
-                    var circulo = L.circle([lat, lng], {
-                        radius: Number.isFinite(radio) ? radio : 500,
-                        color: '#b91c1c',
-                        fillColor: '#dc2626',
-                        fillOpacity: 0.16,
-                        weight: 2,
-                        opacity: 0.8,
-                    }).addTo(mapa);
-
-                    var icono = L.divIcon({
-                        className: 'custom-marker',
-                        html: '<div style="background:#c62828;color:white;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);">!</div>',
-                        iconSize: [24, 24],
-                        iconAnchor: [12, 12],
-                    });
-
-                    var marcador = L.marker([lat, lng], {
-                        icon: icono,
-                        title: zona.name,
-                    }).addTo(mapa);
-
-                    marcador.on('click', function() { abrirDialogoZona(zona); });
-                    circulo.on('click', function() { abrirDialogoZona(zona); });
-
-                    marcador.bindPopup(
-                        '<strong>' + escaparHtml(zona.name) + '</strong><br>' +
-                        '<small>' + escaparHtml(zona.municipality || '') + (zona.state ? ', ' + escaparHtml(zona.state) : '') + '</small>' +
-                        (zona.risks && zona.risks.length ? '<br><span style="color:#c62828;">⚠️ ' + escaparHtml(zona.risks.join(', ')) + '</span>' : '')
-                    );
-
-                    circulosZonas.push(circulo);
-                    marcadoresZonas.push(marcador);
-                });
-            }
-
-            function limpiarCapasZonas() {
-                circulosZonas.forEach(function(c) { mapa.removeLayer(c); });
-                marcadoresZonas.forEach(function(m) { mapa.removeLayer(m); });
-                circulosZonas = [];
-                marcadoresZonas = [];
-            }
-
-            function iniciarColocacionZona() {
-                if (!mapa) {
-                    mostrarMensaje('El mapa todavía no está listo.', 'error');
-                    return;
-                }
-                window.GPS.modoColocarZona = true;
-                mostrarMensaje('Haz clic en el mapa para colocar el centro de la nueva zona roja.');
-            }
-
-            async function seleccionarPuntoZona(latlng) {
-                window.GPS.modoColocarZona = false;
-                var posicion = {
-                    lat: latlng.lat,
-                    lng: latlng.lng,
-                };
-                abrirDialogoZona({
-                    id: '',
-                    name: '',
-                    municipality: '',
-                    state: '',
-                    risks: [],
-                    description: '',
-                    lat: posicion.lat,
-                    lng: posicion.lng,
-                    radius_m: 500,
-                });
-                await completarDireccionZona(posicion);
-            }
-
-            async function completarDireccionZona(posicion) {
-                porId('estadoFormularioZona').textContent = 'Consultando la dirección del punto...';
-
-                try {
-                    var response = await fetch(
-                        NOMINATIM_URL + '/reverse?lat=' + posicion.lat + '&lon=' + posicion.lng + '&format=json&accept-language=es',
-                        { headers: { 'User-Agent': 'GPS-RutasSeguras/1.0' } }
-                    );
-                    var data = await response.json();
-                    
-                    if (data && data.address) {
-                        var addr = data.address;
-                        var nombreZona = porId('nombreZona');
-                        if (!nombreZona.value) {
-                            nombreZona.value = addr.road || addr.suburb || addr.city || '';
-                        }
-                        porId('municipioZona').value = addr.city || addr.town || addr.village || '';
-                        porId('estadoZona').value = addr.state || '';
-                        porId('estadoFormularioZona').textContent = 'Ubicación completada correctamente.';
-                    } else {
-                        porId('estadoFormularioZona').textContent = 'No se pudo obtener la dirección automáticamente.';
-                    }
-                } catch (error) {
-                    porId('estadoFormularioZona').textContent = 'Error al obtener la dirección: ' + error.message;
-                }
-            }
-
-            function abrirDialogoZona(zona) {
-                var editando = Boolean(zona && zona.id);
-                porId('tituloDialogoZona').textContent = editando ? 'Editar zona roja' : 'Nueva zona roja';
-                porId('idZona').value = zona && zona.id ? zona.id : '';
-                porId('nombreZona').value = zona && zona.name ? zona.name : '';
-                porId('municipioZona').value = zona && zona.municipality ? zona.municipality : '';
-                porId('estadoZona').value = zona && zona.state ? zona.state : '';
-                porId('riesgosZona').value = zona && zona.risks ? zona.risks.join(', ') : '';
-                porId('descripcionZona').value = zona && zona.description ? zona.description : '';
-                porId('latitudZona').value = zona && zona.lat ? zona.lat : '';
-                porId('longitudZona').value = zona && zona.lng ? zona.lng : '';
-                porId('radioZona').value = zona && zona.radius_m ? zona.radius_m : 500;
-                porId('estadoFormularioZona').textContent = '';
-                porId('botonEliminarZona').classList.toggle('hidden', !editando);
-                porId('dialogoZona').showModal();
-            }
-
-            function cerrarDialogoZona() {
-                window.GPS.modoColocarZona = false;
-                porId('dialogoZona').close();
-            }
-
-            function obtenerDatosFormularioZona() {
-                return {
-                    name: porId('nombreZona').value.trim(),
-                    municipality: porId('municipioZona').value.trim(),
-                    state: porId('estadoZona').value.trim(),
-                    risks: porId('riesgosZona').value
-                        .split(',')
-                        .map(function(e) { return e.trim(); })
-                        .filter(Boolean),
-                    description: porId('descripcionZona').value.trim(),
-                    lat: Number(porId('latitudZona').value),
-                    lng: Number(porId('longitudZona').value),
-                    radius_m: Number(porId('radioZona').value),
-                };
-            }
-
-            async function guardarZona(evento) {
-                evento.preventDefault();
-                var id = porId('idZona').value;
-                var metodo = id ? 'PUT' : 'POST';
-                var url = id ? '/api/zones/' + encodeURIComponent(id) : '/api/zones';
-                porId('estadoFormularioZona').textContent = 'Guardando...';
-
-                try {
-                    await solicitarJson(url, {
-                        method: metodo,
-                        body: JSON.stringify(obtenerDatosFormularioZona()),
-                    });
-                    await cargarZonas();
-                    if (!window.GPS.zonasVisibles) {
-                        mostrarZonas();
-                    } else {
-                        dibujarZonas();
-                    }
-                    cerrarDialogoZona();
-                    mostrarMensaje('Zona guardada correctamente.', 'success');
-                } catch (error) {
-                    porId('estadoFormularioZona').textContent = error.message;
-                }
-            }
-
-            async function eliminarZona() {
-                var id = porId('idZona').value;
-                if (!id || !window.confirm('¿Deseas eliminar esta zona roja?')) {
-                    return;
-                }
-
-                try {
-                    await solicitarJson('/api/zones/' + encodeURIComponent(id), {
-                        method: 'DELETE',
-                    });
-                    await cargarZonas();
-                    dibujarZonas();
-                    cerrarDialogoZona();
-                    mostrarMensaje('Zona eliminada correctamente.', 'success');
-                } catch (error) {
-                    porId('estadoFormularioZona').textContent = error.message;
-                }
-            }
-
-            // ---------- CALCULAR RUTA ----------
-            async function calcularRuta() {
-                var origen = porId('entradaOrigen').value.trim();
-                var destino = porId('entradaDestino').value.trim();
-                var rendimiento = Number(porId('entradaRendimiento').value);
-
-                if (!origen || !destino) {
-                    mostrarMensaje('Escribe un origen y un destino.', 'error');
-                    return;
-                }
-                if (!Number.isFinite(rendimiento) || rendimiento <= 0 || rendimiento > 100) {
-                    mostrarMensaje('El rendimiento debe estar entre 0 y 100 km/l.', 'error');
-                    return;
-                }
-
-                establecerCarga(true);
-                mostrarMensaje('Calculando la ruta y analizando las zonas rojas...');
-
-                try {
-                    var respuesta = await solicitarJson('/api/route', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            origin: origen,
-                            destination: destino,
-                            vehicle_type: porId('selectorVehiculo').value,
-                            efficiency_km_l: rendimiento,
-                        }),
-                    });
-                    
-                    dibujarRuta(respuesta.data);
-                    mostrarResultado(respuesta.data);
-                    mostrarMensaje('Ruta calculada correctamente.', 'success');
-                } catch (error) {
-                    mostrarMensaje(error.message, 'error');
-                } finally {
-                    establecerCarga(false);
-                }
-            }
-
-            function mostrarResultado(datos) {
-                porId('panelResultados').classList.remove('hidden');
-                porId('valorDistancia').textContent = Number(datos.distance_km).toFixed(2) + ' km';
-                porId('valorDuracion').textContent = Math.round(Number(datos.duration_min)) + ' min';
-                porId('valorLitros').textContent = Number(datos.estimated_liters).toFixed(2) + ' L';
-                porId('valorCostoCombustible').textContent = formatearMoneda(datos.fuel_cost_mxn);
-                porId('valorCostoPeajes').textContent = formatearMoneda(
-                    datos.toll_cost,
-                    datos.toll_currency || 'MXN'
-                );
-                porId('valorCostoTotal').textContent = formatearMoneda(datos.total_cost_mxn);
-
-                var origen = datos.origin?.address || datos.origin?.query || 'Origen';
-                var destino = datos.destination?.address || datos.destination?.query || 'Destino';
-                porId('descripcionRuta').textContent = origen + ' → ' + destino;
-                mostrarZonasRojas(datos.red_zones || []);
-                mostrarPeajes(datos);
-            }
-
-            function mostrarZonasRojas(zonas) {
-                var bloque = porId('resultadoZonasRojas');
-                var insignia = porId('insigniaAdvertenciaZona');
-                var lista = porId('listaZonasRojas');
-                lista.innerHTML = '';
-
-                if (!zonas.length) {
-                    bloque.classList.add('hidden');
-                    insignia.classList.add('hidden');
-                    return;
-                }
-
-                bloque.classList.remove('hidden');
-                insignia.classList.remove('hidden');
-                zonas.forEach(function(zona) {
-                    var elemento = document.createElement('li');
-                    var lugar = [zona.municipality, zona.state].filter(Boolean).join(', ');
-                    elemento.textContent = zona.name + (lugar ? ' — ' + lugar : '');
-                    lista.appendChild(elemento);
-                });
-            }
-
-            function mostrarPeajes(datos) {
-                var contenedor = porId('listaPeajes');
-                var peajes = Array.isArray(datos.tolls) ? datos.tolls : [];
-
-                if (!datos.has_tolls) {
-                    contenedor.innerHTML = '<p class="small-text">La ruta seleccionada no reporta peajes.</p>';
-                    return;
-                }
-
-                var advertencias = (datos.toll_warnings || [])
-                    .map(function(texto) { return '<p class="small-text">' + escaparHtml(texto) + '</p>'; })
-                    .join('');
-
-                var elementos = peajes.map(function(peaje) {
-                    var detalle = peaje.address || peaje.instruction || '';
-                    return '<article class="toll-item"><strong>' + escaparHtml(peaje.name || 'Caseta de cobro') + '</strong>' +
-                        (detalle ? '<span>' + escaparHtml(detalle) + '</span>' : '') +
-                        '</article>';
-                }).join('');
-
-                var mensajeSinCasetas = '<p class="small-text">Se detectaron peajes, pero no fue posible identificar cada caseta.</p>';
-                contenedor.innerHTML = (elementos || mensajeSinCasetas) + advertencias;
-            }
-
-            // ---------- LIMPIAR ----------
-            function limpiarOrigen() {
-                porId('entradaOrigen').value = '';
-                window.GPS.posicionOrigen = null;
-                limpiarRuta();
-                if (marcadorOrigen) {
-                    mapa.removeLayer(marcadorOrigen);
-                    marcadorOrigen = null;
-                }
-            }
-
-            function limpiarDestino() {
-                porId('entradaDestino').value = '';
-                window.GPS.posicionDestino = null;
-                limpiarRuta();
-                if (marcadorDestino) {
-                    mapa.removeLayer(marcadorDestino);
-                    marcadorDestino = null;
-                }
-            }
-
-            function limpiarTodo() {
-                limpiarOrigen();
-                limpiarDestino();
-                porId('panelResultados').classList.add('hidden');
-                ocultarMensaje();
-            }
-
-            // ---------- PANEL ----------
-            function cerrarPanel() {
-                porId('panelControl').classList.add('closed');
-                porId('botonAbrirPanel').classList.remove('hidden');
-            }
-
-            function abrirPanel() {
-                porId('panelControl').classList.remove('closed');
-                porId('botonAbrirPanel').classList.add('hidden');
-            }
-
-            // ---------- INICIAR MAPA ----------
-            function iniciarMapa() {
-                console.log('Iniciando mapa...');
-                
-                var contenedor = porId('mapa');
-                if (!contenedor) {
-                    console.error('No se encontró el contenedor del mapa');
-                    setTimeout(iniciarMapa, 500);
-                    return;
-                }
-
-                // Asegurar que el panel sea visible
-                var panel = porId('panelControl');
-                if (panel) {
-                    panel.style.display = 'block';
-                    panel.classList.remove('closed');
-                }
-
-                var botonAbrir = porId('botonAbrirPanel');
-                if (botonAbrir) {
-                    botonAbrir.classList.add('hidden');
-                }
-
-                // Crear el mapa si no existe
-                if (!mapa) {
-                    try {
-                        mapa = L.map('mapa', {
-                            center: [23.6345, -102.5528],
-                            zoom: 5,
-                            zoomControl: true,
-                            attributionControl: true,
-                        });
-
-                        L.tileLayer(TILE_LAYER, {
-                            attribution: TILE_ATTRIBUTION,
-                            maxZoom: 19,
-                        }).addTo(mapa);
-
-                        mapa.on('click', function(e) {
-                            if (window.GPS.modoColocarZona) {
-                                seleccionarPuntoZona(e.latlng);
-                                return;
-                            }
-                            seleccionarPuntoRuta(e.latlng);
-                        });
-
-                        // Forzar actualización del tamaño
-                        setTimeout(function() {
-                            if (mapa) {
-                                mapa.invalidateSize();
-                            }
-                        }, 200);
-
-                    } catch (error) {
-                        console.error('Error al crear el mapa:', error);
-                        mostrarMensaje('Error al inicializar el mapa: ' + error.message, 'error');
-                        return;
-                    }
-                }
-
-                // Configurar autocompletado
-                configurarAutocompletado('entradaOrigen', 'origen');
-                configurarAutocompletado('entradaDestino', 'destino');
-
-                // Cargar zonas
-                cargarZonas();
-
-                mostrarMensaje('Mapa listo. Escribe una dirección o selecciona puntos en el mapa.', 'success');
-                
-                // Forzar actualización del tamaño después de un tiempo
-                setTimeout(function() {
-                    if (mapa) {
-                        mapa.invalidateSize();
-                    }
-                }, 500);
-            }
-
-            // Exponer la función globalmente
-            window.iniciarMapa = iniciarMapa;
-
-            // ---------- INICIALIZAR EVENTOS ----------
-            document.addEventListener('DOMContentLoaded', function() {
-                console.log('DOM cargado, iniciando eventos...');
-                
-                // Botones principales
-                porId('botonCalcular').addEventListener('click', calcularRuta);
-                porId('botonLimpiarTodo').addEventListener('click', limpiarTodo);
-                porId('botonLimpiarOrigen').addEventListener('click', limpiarOrigen);
-                porId('botonLimpiarDestino').addEventListener('click', limpiarDestino);
-                porId('botonCerrarPanel').addEventListener('click', cerrarPanel);
-                porId('botonAbrirPanel').addEventListener('click', abrirPanel);
-                
-                // Zonas
-                porId('botonAlternarZonas').addEventListener('click', alternarZonas);
-                porId('botonAgregarZona').addEventListener('click', iniciarColocacionZona);
-                porId('formularioZona').addEventListener('submit', guardarZona);
-                porId('botonEliminarZona').addEventListener('click', eliminarZona);
-                porId('botonCerrarDialogoZona').addEventListener('click', cerrarDialogoZona);
-                porId('botonCancelarZona').addEventListener('click', cerrarDialogoZona);
-
-                // Enter en campos de texto
-                var entradas = [porId('entradaOrigen'), porId('entradaDestino')];
-                entradas.forEach(function(entrada) {
-                    entrada.addEventListener('keydown', function(evento) {
-                        if (evento.key === 'Enter') {
-                            evento.preventDefault();
-                            calcularRuta();
-                        }
-                    });
-                });
-
-                // Iniciar el mapa
-                console.log('Iniciando mapa desde DOMContentLoaded...');
-                setTimeout(iniciarMapa, 300);
-            });
-
-        })();
+        console.log('✅ index.html cargado - esperando que aplicacion.js inicie el mapa');
     </script>
 </body>
 </html>

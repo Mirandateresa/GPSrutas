@@ -55,6 +55,9 @@ def _decodificar_polilinea_manual(codificada):
 
     return coordenadas
 
+# ============================================================
+# Algoritmo MANHATTAN
+# ============================================================
 
 def distancia_manhattan_km(punto_a, punto_b):
     """Distancia Manhattan aproximada."""
@@ -81,6 +84,9 @@ def construir_grafo_cadena(puntos):
         grafo.setdefault(normalizados[0], [])
     return grafo, normalizados
 
+# ============================================================
+# Algoritmo DIJKSTRA
+# ============================================================
 
 def aplicar_dijkstra(grafo, origen, destino):
     distancias = {origen: 0.0}
@@ -185,7 +191,7 @@ def seleccionar_mejor_ruta_osm(rutas):
     }
 
 
-# Mantener compatibilidad
+
 seleccionar_mejor_ruta = seleccionar_mejor_ruta_osm
 
 

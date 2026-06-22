@@ -141,7 +141,12 @@ class OptimizadorRutas:
             vecino["distance_m"] = round(distancia_total * 1000, 2)
         
         return vecino
-    
+
+
+# ============================================================
+# Algoritmo HILL_CLIMBING
+# ============================================================
+
     def hill_climbing(
         self, 
         ruta_inicial: Dict[str, Any],

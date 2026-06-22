@@ -202,6 +202,9 @@ def eliminar_zona(ruta_archivo, id_zona):
         raise ErrorZonaNoEncontrada("No se encontró la zona solicitada.")
     _guardar_zonas(ruta_archivo, restantes)
 
+# ============================================================
+# Algoritmo HAVERSINE
+# ============================================================
 
 def distancia_haversine_m(punto_a, punto_b):
     latitud1, longitud1 = map(math.radians, punto_a)
@@ -221,6 +224,9 @@ def _a_xy(punto, latitud_referencia):
     y = math.radians(latitud) * RADIO_TIERRA_M
     return x, y
 
+# ============================================================
+# Algoritmo Punto Segmento
+# ============================================================
 
 def distancia_punto_segmento_m(punto, inicio, fin):
     latitud_referencia = (punto[0] + inicio[0] + fin[0]) / 3

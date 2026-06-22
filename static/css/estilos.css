@@ -224,7 +224,7 @@ button {
     top: 20px;
     left: 20px;
     z-index: 10;
-    width: min(430px, calc(100vw - 40px));
+    width: min(500px, calc(100vw - 40px));
     max-height: calc(100vh - 40px);
     overflow-y: auto;
     padding: 22px 24px;
@@ -603,7 +603,7 @@ button:disabled {
 }
 
 /* ============================================
-   RESULTADOS
+   RESULTADOS - MÉTRICAS PRINCIPALES
    ============================================ */
 
 .results {
@@ -648,7 +648,6 @@ button:disabled {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
-    margin-top: 4px;
 }
 
 .metric {
@@ -698,11 +697,100 @@ button:disabled {
 }
 
 /* ============================================
-   RESULT BLOCKS
+   CUADRO FLOTANTE - ESQUINA SUPERIOR DERECHA
+   ============================================ */
+
+.cuadro-flotante {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    width: min(350px, calc(100vw - 40px));
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    padding: 16px 18px;
+    border-radius: 20px;
+    background: rgba(255, 251, 247, 0.97);
+    backdrop-filter: blur(16px);
+    box-shadow: 0 18px 45px rgba(92, 64, 51, 0.2);
+    border: 1px solid rgba(212, 165, 116, 0.15);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.cuadro-flotante.hidden {
+    display: none;
+}
+
+.cuadro-flotante .result-block {
+    margin-top: 0 !important;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: var(--crema-claro);
+    border: 1px solid var(--beige);
+}
+
+.cuadro-flotante .result-block:not(:last-child) {
+    margin-bottom: 12px;
+}
+
+.cuadro-flotante .result-block h3 {
+    margin: 0 0 8px 0;
+    font-size: 0.85rem;
+    color: var(--cafe-texto);
+}
+
+.cuadro-flotante .result-block ul {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.cuadro-flotante .result-block li {
+    margin: 3px 0;
+    color: var(--cafe-texto);
+    font-size: 0.78rem;
+}
+
+.cuadro-flotante .toll-item {
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    margin-bottom: 4px;
+}
+
+.cuadro-flotante .toll-item strong {
+    display: block;
+    color: #16a34a;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.cuadro-flotante .toll-item span {
+    display: block;
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 0.7rem;
+}
+
+.cuadro-flotante::-webkit-scrollbar {
+    width: 4px;
+}
+
+.cuadro-flotante::-webkit-scrollbar-track {
+    background: var(--crema-claro);
+    border-radius: 10px;
+}
+
+.cuadro-flotante::-webkit-scrollbar-thumb {
+    background: var(--beige);
+    border-radius: 10px;
+}
+
+/* ============================================
+   RESULT BLOCKS (para el cuadro flotante)
    ============================================ */
 
 .result-block {
-    margin-top: 13px;
     padding: 14px 16px;
     border-radius: 14px;
     background: var(--crema-claro);
@@ -731,7 +819,7 @@ button:disabled {
 }
 
 /* ============================================
-   PEAJES
+   PEAJES - VERSIÓN VERDE
    ============================================ */
 
 .tolls-list {
@@ -757,6 +845,39 @@ button:disabled {
     margin-top: 3px;
     color: var(--muted);
     font-size: 0.75rem;
+}
+
+/* 🟢 PEAJES VERDES (para el cuadro flotante) */
+.toll-item-verde {
+    margin-bottom: 6px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.toll-item-verde .icono {
+    color: #16a34a;
+    font-weight: 600;
+}
+
+.toll-item-verde .nombre {
+    color: #16a34a;
+    font-weight: 500;
+}
+
+.toll-item-verde .precio {
+    color: #16a34a;
+    font-weight: 600;
+}
+
+.toll-item-verde .estimado {
+    color: #999;
+    font-size: 0.7rem;
 }
 
 /* ============================================
@@ -828,100 +949,6 @@ button:disabled {
 }
 
 /* ============================================
-   AUTCOMPLETADO DE GOOGLE
-   ============================================ */
-
-.pac-container {
-    z-index: 10000;
-    border-radius: 12px;
-    border: 2px solid var(--beige);
-    box-shadow: var(--shadow);
-    background: var(--blanco-crema);
-}
-
-.pac-item {
-    padding: 10px 14px;
-    color: var(--cafe-texto);
-    border-top: 1px solid var(--crema-claro);
-}
-
-.pac-item:hover {
-    background: var(--crema-claro);
-}
-
-.pac-item-query {
-    color: var(--cafe-texto);
-    font-weight: 600;
-}
-
-/* ============================================
-   RESPONSIVE
-   ============================================ */
-
-@media (max-width: 650px) {
-    .panel {
-        top: 10px;
-        left: 10px;
-        width: calc(100vw - 20px);
-        max-height: calc(100vh - 20px);
-        border-radius: 18px;
-        padding: 16px 18px;
-    }
-
-    .floating-menu {
-        top: 10px;
-        left: 10px;
-        width: 44px;
-        height: 44px;
-    }
-
-    .two-columns,
-    .metric-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .button-row,
-    .zones-toolbar {
-        flex-wrap: wrap;
-    }
-
-    .inicio-card {
-        padding: 35px 25px;
-        margin: 15px;
-    }
-
-    .inicio-titulo {
-        font-size: 1.7rem;
-    }
-
-    .inicio-caracteristicas {
-        gap: 12px;
-    }
-
-    .caracteristica {
-        font-size: 0.8rem;
-        padding: 6px 12px;
-    }
-}
-
-@media (max-width: 400px) {
-    .panel {
-        padding: 12px 14px;
-        border-radius: 14px;
-    }
-
-    .inicio-card {
-        padding: 25px 18px;
-    }
-
-    .inicio-titulo {
-        font-size: 1.4rem;
-    }
-}
-
-/* Agregar al final del archivo */
-
-/* ============================================
    AUTOCOMPLETADO
    ============================================ */
 
@@ -983,4 +1010,79 @@ button:disabled {
     color: var(--cafe-texto);
     font-family: 'Quicksand', sans-serif;
     font-size: 0.85rem;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .cuadro-flotante {
+        top: auto;
+        bottom: 10px;
+        right: 10px;
+        width: calc(100vw - 20px);
+        max-height: 45vh;
+    }
+}
+
+@media (max-width: 650px) {
+    .panel {
+        top: 10px;
+        left: 10px;
+        width: calc(100vw - 20px);
+        max-height: calc(100vh - 20px);
+        border-radius: 18px;
+        padding: 16px 18px;
+    }
+
+    .floating-menu {
+        top: 10px;
+        left: 10px;
+        width: 44px;
+        height: 44px;
+    }
+
+    .two-columns,
+    .metric-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .button-row,
+    .zones-toolbar {
+        flex-wrap: wrap;
+    }
+
+    .inicio-card {
+        padding: 35px 25px;
+        margin: 15px;
+    }
+
+    .inicio-titulo {
+        font-size: 1.7rem;
+    }
+
+    .inicio-caracteristicas {
+        gap: 12px;
+    }
+
+    .caracteristica {
+        font-size: 0.8rem;
+        padding: 6px 12px;
+    }
+}
+
+@media (max-width: 400px) {
+    .panel {
+        padding: 12px 14px;
+        border-radius: 14px;
+    }
+
+    .inicio-card {
+        padding: 25px 18px;
+    }
+
+    .inicio-titulo {
+        font-size: 1.4rem;
+    }
 }

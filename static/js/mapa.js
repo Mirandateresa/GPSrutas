@@ -1,3 +1,4 @@
+// static/js/mapa.js - VERSIÓN COMPLETA QUE FUNCIONA
 // Mapa con Leaflet y OpenStreetMap
 
 const TILE_LAYER = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -18,11 +19,11 @@ let marcadoresPeajes = [];
 let lineaRuta = null;
 
 function iniciarMapa() {
-    console.log('Iniciando mapa...');
+    console.log('📌 Iniciando mapa...');
     
     var contenedor = document.getElementById('mapa');
     if (!contenedor) {
-        console.error('No se encontró el contenedor del mapa');
+        console.error('❌ No se encontró el contenedor del mapa');
         setTimeout(iniciarMapa, 500);
         return;
     }
@@ -67,7 +68,7 @@ function iniciarMapa() {
             }, 200);
 
         } catch (error) {
-            console.error('Error al crear el mapa:', error);
+            console.error('❌ Error al crear el mapa:', error);
             mostrarMensaje('Error al inicializar el mapa: ' + error.message, 'error');
             return;
         }
@@ -89,7 +90,13 @@ function iniciarMapa() {
     }, 500);
 }
 
+// 🔑 EXPONER LA FUNCIÓN GLOBALMENTE
 window.iniciarMapa = iniciarMapa;
+console.log('✅ mapa.js cargado - window.iniciarMapa disponible');
+
+// ============================================================
+// GEOCODIFICACIÓN
+// ============================================================
 
 async function geocodificar(direccion) {
     try {
@@ -128,6 +135,10 @@ async function geocodificarReversa(lat, lng) {
         return lat.toFixed(6) + ', ' + lng.toFixed(6);
     }
 }
+
+// ============================================================
+// AUTOCOMPLETADO
+// ============================================================
 
 function configurarAutocompletado(idInput, tipo) {
     var input = document.getElementById(idInput);
@@ -216,6 +227,10 @@ function configurarAutocompletado(idInput, tipo) {
     });
 }
 
+// ============================================================
+// SELECCIÓN DE PUNTOS
+// ============================================================
+
 async function seleccionarPuntoRuta(latlng) {
     var posicion = {
         lat: latlng.lat,
@@ -291,12 +306,17 @@ function enfocarPosicion(posicion, zoom) {
 }
 
 // ============================================================
-// DIBUJAR RUTA CON PEAJES
+// DIBUJAR RUTA
 // ============================================================
 
 function dibujarRuta(datos) {
-    console.log('Dibujando ruta con', datos.tolls ? datos.tolls.length : 0, 'peajes');
+    console.log('📌 dibujarRuta llamado con datos:', datos);
     
+    if (!datos) {
+        console.error('❌ No hay datos para dibujar');
+        return;
+    }
+
     limpiarRuta();
 
     var trayecto = (datos.coordinates || [])
@@ -308,7 +328,11 @@ function dibujarRuta(datos) {
         return;
     }
 
-    // Dibujar la línea de la ruta
+    if (!mapa) {
+        console.error('❌ El mapa no está inicializado');
+        return;
+    }
+
     lineaRuta = L.polyline(trayecto, {
         color: '#2563eb',
         weight: 6,
@@ -319,7 +343,6 @@ function dibujarRuta(datos) {
     var bounds = L.latLngBounds(trayecto);
     mapa.fitBounds(bounds, { padding: [50, 50] });
 
-    // Actualizar marcadores de origen y destino
     window.GPS.posicionOrigen = {
         lat: Number(datos.origin.lat),
         lng: Number(datos.origin.lng),
@@ -330,9 +353,8 @@ function dibujarRuta(datos) {
     };
     dibujarMarcadoresSeleccion();
 
-    // 🔑 DIBUJAR MARCADORES DE PEAJES
     var peajes = datos.tolls || [];
-    console.log('Peajes a dibujar:', peajes.length);
+    console.log('📌 Peajes a dibujar:', peajes.length);
     dibujarMarcadoresPeajes(peajes);
 
     if (datos.has_red_zones && !window.GPS.zonasVisibles) {
@@ -341,83 +363,64 @@ function dibujarRuta(datos) {
 }
 
 // ============================================================
-// DIBUJAR MARCADORES DE PEAJES - VERSIÓN MEJORADA
+// 🟢 MARCADORES DE PEAJES - VERDES CON $
 // ============================================================
 
 function dibujarMarcadoresPeajes(peajes) {
-    console.log('Dibujando marcadores de peajes:', peajes);
+    console.log('📌 dibujarMarcadoresPeajes llamado con:', peajes);
     
     if (!mapa) return;
     
-    // Limpiar marcadores anteriores
-    marcadoresPeajes.forEach(function(m) { 
-        if (m && mapa.hasLayer(m)) {
-            mapa.removeLayer(m); 
-        }
-    });
+    marcadoresPeajes.forEach(function(m) { if (m && mapa.hasLayer(m)) mapa.removeLayer(m); });
     marcadoresPeajes = [];
 
     if (!peajes || peajes.length === 0) {
-        console.log('No hay peajes para dibujar');
+        console.log('📌 No hay peajes para dibujar');
         return;
     }
 
-    // Icono para peajes
     var iconoPeaje = L.divIcon({
         className: 'custom-marker',
-        html: '<div style="background:#b45309;color:white;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:14px;border:3px solid white;box-shadow:0 2px 10px rgba(0,0,0,0.3);">$</div>',
+        html: '<div style="background:#16a34a;color:white;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:16px;border:3px solid white;box-shadow:0 2px 10px rgba(22,163,74,0.5);">$</div>',
         iconSize: [32, 32],
         iconAnchor: [16, 16],
     });
 
-    // Icono para peajes sin coordenadas (usar posición estimada)
-    var iconoPeajeEstimado = L.divIcon({
-        className: 'custom-marker',
-        html: '<div style="background:#d97706;color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);">?</div>',
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
-    });
-
-    peajes.forEach(function(peaje, index) {
+    peajes.forEach(function(peaje) {
         var lat = Number(peaje.lat);
         var lng = Number(peaje.lng);
         
-        // Si no tiene coordenadas válidas, intentar estimar desde la ruta
         if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) {
-            console.log('Peaje sin coordenadas:', peaje.name);
+            console.log('⚠️ Peaje sin coordenadas:', peaje.name);
             return;
         }
 
-        console.log('Agregando peaje:', peaje.name, 'en', lat, lng);
+        console.log('📍 Agregando peaje:', peaje.name, 'en', lat, lng);
 
-        var icono = peaje.estimated_location ? iconoPeajeEstimado : iconoPeaje;
-        
         var marcador = L.marker([lat, lng], {
-            icon: icono,
+            icon: iconoPeaje,
             title: peaje.name || 'Peaje',
         }).addTo(mapa);
 
-        // Popup con información del peaje
-        var contenido = '<div style="min-width:150px;max-width:250px;">';
-        contenido += '<strong style="color:#b45309;">🛣️ ' + escaparHtml(peaje.name || 'Peaje') + '</strong><br>';
-        if (peaje.address) {
-            contenido += '<small>' + escaparHtml(peaje.address) + '</small><br>';
+        var nombreLimpio = peaje.name || 'Peaje';
+        if (nombreLimpio.includes('(Cuota)')) nombreLimpio = nombreLimpio.replace('(Cuota)', '').trim();
+        if (nombreLimpio.startsWith('Autopista de Peaje')) nombreLimpio = nombreLimpio.replace('Autopista de Peaje', '').trim();
+        if (nombreLimpio.includes(' - ')) {
+            var partes = nombreLimpio.split(' - ');
+            nombreLimpio = partes[0] + ' - ' + partes[partes.length - 1];
         }
-        if (peaje.price) {
-            contenido += '<span style="color:#2563eb;font-weight:bold;">$' + Number(peaje.price).toFixed(2) + ' MXN</span><br>';
-        }
-        if (peaje.estimated_location) {
-            contenido += '<span style="color:#d97706;font-size:0.7rem;">📍 Ubicación estimada</span>';
-        }
-        contenido += '<br><small style="color:#999;">Peaje #' + (index + 1) + '</small>';
-        contenido += '</div>';
-        
-        marcador.bindPopup(contenido);
 
+        var contenido = '<div style="min-width:120px;max-width:220px;font-family:Quicksand,sans-serif;padding:2px 0;">';
+        contenido += '<strong style="color:#16a34a;font-size:0.95rem;">🟢 ' + escaparHtml(nombreLimpio) + '</strong>';
+        if (peaje.price) {
+            contenido += '<br><span style="color:#16a34a;font-weight:bold;font-size:0.85rem;">$' + Number(peaje.price).toFixed(2) + ' MXN</span>';
+        }
+        contenido += '</div>';
+        marcador.bindPopup(contenido);
         marcadoresPeajes.push(marcador);
     });
 
-    console.log('Total marcadores de peajes:', marcadoresPeajes.length);
+    console.log('✅ Total marcadores de peajes:', marcadoresPeajes.length);
 }
 
 // ============================================================
@@ -441,7 +444,7 @@ function limpiarRuta() {
 }
 
 // ============================================================
-// ZONAS - FUNCIONES BÁSICAS
+// ZONAS ROJAS
 // ============================================================
 
 var circulosZonas = [];
@@ -668,3 +671,5 @@ async function eliminarZona() {
         document.getElementById('estadoFormularioZona').textContent = error.message;
     }
 }
+
+console.log('✅ mapa.js completamente cargado');

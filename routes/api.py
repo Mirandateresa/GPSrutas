@@ -30,7 +30,7 @@ def estado_servidor():
 def calcular_ruta_api():
     try:
         datos = request.get_json(silent=True) or {}
-        logger.info(f"📥 Datos recibidos en /api/route: {datos}")
+        logger.info(f" Datos recibidos en /api/route: {datos}")
         
         origen = str(datos.get("origin", "")).strip()
         destino = str(datos.get("destination", "")).strip()
@@ -48,30 +48,30 @@ def calcular_ruta_api():
                 )
             )
         except (TypeError, ValueError) as e:
-            logger.error(f"❌ Error en rendimiento: {e}")
+            logger.error(f" Error en rendimiento: {e}")
             return respuesta_error("El rendimiento debe ser un número válido.")
 
         if not origen or not destino:
-            logger.error("❌ Origen o destino vacío")
+            logger.error(" Origen o destino vacío")
             return respuesta_error("Debes indicar un origen y un destino.")
             
         if tipo_vehiculo not in {"GASOLINE", "TRUCK"}:
-            logger.error(f"❌ Tipo de vehículo inválido: {tipo_vehiculo}")
+            logger.error(f" Tipo de vehículo inválido: {tipo_vehiculo}")
             return respuesta_error("El tipo de vehículo debe ser GASOLINE o TRUCK.")
             
         if rendimiento <= 0 or rendimiento > 100:
-            logger.error(f"❌ Rendimiento inválido: {rendimiento}")
+            logger.error(f" Rendimiento inválido: {rendimiento}")
             return respuesta_error("El rendimiento debe estar entre 0 y 100 km/l.")
 
-        logger.info("✅ Datos validados correctamente")
+        logger.info(" Datos validados correctamente")
 
         archivo_zonas = current_app.config.get("ARCHIVO_ZONAS")
-        logger.info(f"📁 Archivo de zonas: {archivo_zonas}")
+        logger.info(f" Archivo de zonas: {archivo_zonas}")
         
         zonas = listar_zonas(archivo_zonas)
-        logger.info(f"📍 Zonas cargadas: {len(zonas)}")
+        logger.info(f" Zonas cargadas: {len(zonas)}")
 
-        logger.info("🔄 Calculando ruta con OpenStreetMap...")
+        logger.info(" Calculando ruta con OpenStreetMap...")
         resultado = calcular_viaje(
             origen=origen,
             destino=destino,
