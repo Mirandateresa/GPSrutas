@@ -1,4 +1,4 @@
-// static/js/mapa.js - VERSIÓN COMPLETA QUE FUNCIONA
+// static/js/mapa.js - VERSIÓN COMPLETA CON ZONAS ROJAS Y BOTÓN FUNCIONAL
 // Mapa con Leaflet y OpenStreetMap
 
 const TILE_LAYER = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -17,6 +17,10 @@ let marcadorOrigen = null;
 let marcadorDestino = null;
 let marcadoresPeajes = [];
 let lineaRuta = null;
+
+// ============================================================
+// INICIAR MAPA
+// ============================================================
 
 function iniciarMapa() {
     console.log('📌 Iniciando mapa...');
@@ -84,10 +88,16 @@ function iniciarMapa() {
     mostrarMensaje('Mapa listo. Escribe una dirección o selecciona puntos en el mapa.', 'success');
     
     setTimeout(function() {
+        if (window.GPS.zonas && window.GPS.zonas.length > 0) {
+            console.log('📌 Forzando dibujado de zonas en el mapa...');
+            dibujarZonas();
+            window.GPS.zonasVisibles = true;
+            actualizarBotonZonas();
+        }
         if (mapa) {
             mapa.invalidateSize();
         }
-    }, 500);
+    }, 1000);
 }
 
 // 🔑 EXPONER LA FUNCIÓN GLOBALMENTE
@@ -444,68 +454,124 @@ function limpiarRuta() {
 }
 
 // ============================================================
-// ZONAS ROJAS
+// ZONAS ROJAS - COMPLETO CON BOTÓN FUNCIONAL
 // ============================================================
 
 var circulosZonas = [];
 var marcadoresZonas = [];
 
+// ---------- CARGAR ZONAS ----------
 async function cargarZonas() {
     try {
+        console.log('📌 Cargando zonas desde /api/zones...');
         var respuesta = await solicitarJson('/api/zones');
         window.GPS.zonas = respuesta.data || [];
-        if (window.GPS.zonasVisibles) {
-            dibujarZonas();
+        console.log('✅ Zonas cargadas:', window.GPS.zonas.length);
+        
+        if (window.GPS.zonas && window.GPS.zonas.length > 0) {
+            console.log('📌 Dibujando zonas automáticamente después de cargar');
+            setTimeout(function() {
+                dibujarZonas();
+                window.GPS.zonasVisibles = true;
+                actualizarBotonZonas();
+            }, 500);
         }
     } catch (error) {
+        console.error('❌ Error al cargar zonas:', error);
         mostrarMensaje('No fue posible cargar las zonas: ' + error.message, 'error');
     }
 }
 
+// ---------- ACTUALIZAR BOTÓN ----------
+function actualizarBotonZonas() {
+    var btn = document.getElementById('botonAlternarZonas');
+    if (!btn) {
+        console.warn('⚠️ Botón "botonAlternarZonas" no encontrado');
+        return;
+    }
+    
+    if (window.GPS.zonasVisibles) {
+        btn.classList.add('active');
+        btn.innerHTML = '<span>⚠️</span> Ocultar zonas rojas';
+    } else {
+        btn.classList.remove('active');
+        btn.innerHTML = '<span>⚠️</span> Mostrar zonas rojas';
+    }
+    console.log('📌 Botón actualizado:', btn.textContent);
+}
+
+// ---------- ALTERNAR ZONAS ----------
 function alternarZonas() {
-    window.GPS.zonasVisibles ? ocultarZonas() : mostrarZonas();
+    console.log('📌 alternarZonas() ejecutado');
+    console.log('📌 zonasVisibles antes:', window.GPS.zonasVisibles);
+    
+    if (window.GPS.zonasVisibles) {
+        ocultarZonas();
+    } else {
+        mostrarZonas();
+    }
 }
 
 function mostrarZonas() {
+    console.log('📌 mostrarZonas() ejecutado');
     window.GPS.zonasVisibles = true;
-    var btn = document.getElementById('botonAlternarZonas');
-    btn.classList.add('active');
-    btn.textContent = 'Ocultar zonas rojas';
     dibujarZonas();
+    actualizarBotonZonas();
 }
 
 function ocultarZonas() {
+    console.log('📌 ocultarZonas() ejecutado');
     window.GPS.zonasVisibles = false;
-    var btn = document.getElementById('botonAlternarZonas');
-    btn.classList.remove('active');
-    btn.textContent = 'Mostrar zonas rojas';
     limpiarCapasZonas();
+    actualizarBotonZonas();
 }
 
+// ---------- DIBUJAR ZONAS EN EL MAPA ----------
 function dibujarZonas() {
-    if (!mapa) return;
+    console.log('📌 dibujarZonas() ejecutado');
+    console.log('📌 mapa existe?', !!mapa);
+    console.log('📌 Zonas a dibujar:', window.GPS.zonas);
+    
+    if (!mapa) {
+        console.warn('⚠️ El mapa no está inicializado');
+        return;
+    }
+    
     limpiarCapasZonas();
 
-    window.GPS.zonas.forEach(function(zona) {
+    if (!window.GPS.zonas || window.GPS.zonas.length === 0) {
+        console.log('📌 No hay zonas para dibujar');
+        return;
+    }
+
+    console.log('✅ Dibujando', window.GPS.zonas.length, 'zonas en el mapa');
+
+    window.GPS.zonas.forEach(function(zona, index) {
         var lat = Number(zona.lat);
         var lng = Number(zona.lng);
         var radio = Number(zona.radius_m);
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+        
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+            console.warn('⚠️ Zona sin coordenadas válidas:', zona);
+            return;
+        }
 
+        // 🟥 CÍRCULO ROJO
         var circulo = L.circle([lat, lng], {
             radius: Number.isFinite(radio) ? radio : 500,
             color: '#b91c1c',
             fillColor: '#dc2626',
-            fillOpacity: 0.16,
+            fillOpacity: 0.25,
             weight: 2,
             opacity: 0.8,
         }).addTo(mapa);
 
+        // 🟥 MARCADOR CON "!"
         var icono = L.divIcon({
             className: 'custom-marker',
-            html: '<div style="background:#c62828;color:white;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);">!</div>',
-            iconSize: [24, 24],
-            iconAnchor: [12, 12],
+            html: '<div style="background:#c62828;color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:14px;border:3px solid white;box-shadow:0 2px 10px rgba(198,40,40,0.5);">!</div>',
+            iconSize: [28, 28],
+            iconAnchor: [14, 14],
         });
 
         var marcador = L.marker([lat, lng], {
@@ -513,27 +579,59 @@ function dibujarZonas() {
             title: zona.name,
         }).addTo(mapa);
 
-        marcador.on('click', function() { abrirDialogoZona(zona); });
-        circulo.on('click', function() { abrirDialogoZona(zona); });
-
         marcador.bindPopup(
-            '<strong>' + escaparHtml(zona.name) + '</strong><br>' +
+            '<strong>⚠️ ' + escaparHtml(zona.name) + '</strong><br>' +
             '<small>' + escaparHtml(zona.municipality || '') + (zona.state ? ', ' + escaparHtml(zona.state) : '') + '</small>' +
-            (zona.risks && zona.risks.length ? '<br><span style="color:#c62828;">⚠️ ' + escaparHtml(zona.risks.join(', ')) + '</span>' : '')
+            (zona.risks && zona.risks.length ? '<br><span style="color:#c62828;">' + escaparHtml(zona.risks.join(', ')) + '</span>' : '')
         );
 
         circulosZonas.push(circulo);
         marcadoresZonas.push(marcador);
     });
+
+    console.log('✅ Total círculos:', circulosZonas.length, 'marcadores:', marcadoresZonas.length);
 }
 
+// ---------- LIMPIAR CAPAS DE ZONAS ----------
 function limpiarCapasZonas() {
-    circulosZonas.forEach(function(c) { if (mapa && mapa.hasLayer(c)) mapa.removeLayer(c); });
-    marcadoresZonas.forEach(function(m) { if (mapa && mapa.hasLayer(m)) mapa.removeLayer(m); });
+    console.log('📌 limpiarCapasZonas() ejecutado');
+    circulosZonas.forEach(function(c) { 
+        if (mapa && mapa.hasLayer(c)) {
+            mapa.removeLayer(c); 
+        }
+    });
+    marcadoresZonas.forEach(function(m) { 
+        if (mapa && mapa.hasLayer(m)) {
+            mapa.removeLayer(m); 
+        }
+    });
     circulosZonas = [];
     marcadoresZonas = [];
 }
 
+// ---------- VINCULAR BOTÓN DE ZONAS ----------
+function vincularBotonZonas() {
+    var btn = document.getElementById('botonAlternarZonas');
+    if (btn) {
+        btn.removeEventListener('click', alternarZonas);
+        btn.addEventListener('click', alternarZonas);
+        console.log('✅ Botón de zonas vinculado correctamente');
+        actualizarBotonZonas();
+        return true;
+    }
+    console.warn('⚠️ Botón "botonAlternarZonas" no encontrado');
+    return false;
+}
+
+// Intentar vincular inmediatamente
+vincularBotonZonas();
+
+// También vincular cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', function() {
+    vincularBotonZonas();
+});
+
+// ---------- CREAR ZONA DESDE EL MAPA ----------
 function iniciarColocacionZona() {
     if (!mapa) {
         mostrarMensaje('El mapa todavía no está listo.', 'error');
@@ -590,6 +688,7 @@ async function completarDireccionZona(posicion) {
     }
 }
 
+// ---------- CRUD DE ZONAS ----------
 function abrirDialogoZona(zona) {
     var editando = Boolean(zona && zona.id);
     document.getElementById('tituloDialogoZona').textContent = editando ? 'Editar zona roja' : 'Nueva zona roja';

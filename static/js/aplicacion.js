@@ -114,6 +114,9 @@ async function calcularRuta() {
             }),
         });
         
+        console.log("📌 Datos de la ruta recibidos:", respuesta.data);
+        console.log("📌 Zonas rojas en la respuesta:", respuesta.data.red_zones);
+        
         if (window.GPSMapa && typeof window.GPSMapa.dibujarRuta === 'function') {
             window.GPSMapa.dibujarRuta(respuesta.data);
         } else {
@@ -135,7 +138,7 @@ async function calcularRuta() {
 // ============================================
 
 function mostrarResultado(datos) {
-    console.log("Mostrando resultado:", datos);
+    console.log("📌 Mostrando resultado:", datos);
     
     porId("panelResultados").classList.remove("hidden");
     porId("valorDistancia").textContent = Number(datos.distance_km).toFixed(2) + " km";
@@ -164,27 +167,42 @@ function mostrarResultado(datos) {
 }
 
 // ============================================
-// MOSTRAR ZONAS ROJAS - EN CUADRO FLOTANTE
+// MOSTRAR ZONAS ROJAS - EN CUADRO FLOTANTE (CORREGIDO)
 // ============================================
 
 function mostrarZonasRojas(zonas) {
+    console.log("📌 Mostrando zonas rojas. Datos recibidos:", zonas);
+    console.log("📌 ¿Es un array?", Array.isArray(zonas));
+    console.log("📌 Cantidad de zonas:", zonas ? zonas.length : 0);
+    
     var bloque = document.getElementById("resultadoZonasRojas");
     var insignia = document.getElementById("insigniaAdvertenciaZona");
     var lista = document.getElementById("listaZonasRojas");
     var cuadroFlotante = document.getElementById("cuadroFlotante");
     
+    console.log("📌 Elementos DOM encontrados:", {
+        bloque: !!bloque,
+        insignia: !!insignia,
+        lista: !!lista,
+        cuadroFlotante: !!cuadroFlotante
+    });
+    
     if (!bloque) {
-        // Si no existe el elemento en el DOM (porque se movió al cuadro flotante)
-        bloque = document.getElementById("resultadoZonasRojas");
-        if (!bloque) return;
+        console.warn("⚠️ resultadoZonasRojas no encontrado en el DOM");
+        return;
     }
-    if (!lista) return;
+    if (!lista) {
+        console.warn("⚠️ listaZonasRojas no encontrado en el DOM");
+        return;
+    }
     
     lista.innerHTML = "";
 
     if (!zonas || zonas.length === 0) {
-        if (bloque) bloque.classList.add("hidden");
+        console.log("📌 No hay zonas rojas para mostrar");
+        bloque.classList.add("hidden");
         if (insignia) insignia.classList.add("hidden");
+        
         // Verificar si hay peajes para mostrar
         var peajesBlock = document.getElementById("resultadoPeajes");
         var peajesList = document.getElementById("listaPeajes");
@@ -194,11 +212,13 @@ function mostrarZonasRojas(zonas) {
         return;
     }
 
-    if (bloque) bloque.classList.remove("hidden");
+    console.log("✅ Mostrando", zonas.length, "zonas rojas");
+    bloque.classList.remove("hidden");
     if (insignia) insignia.classList.remove("hidden");
     if (cuadroFlotante) cuadroFlotante.classList.remove("hidden");
 
-    zonas.forEach(function(zona) {
+    zonas.forEach(function(zona, index) {
+        console.log("   Zona #" + (index + 1) + ":", zona.name);
         var elemento = document.createElement("li");
         var lugar = [zona.municipality, zona.state].filter(Boolean).join(", ");
         elemento.textContent = zona.name + (lugar ? " — " + lugar : "");
@@ -215,7 +235,7 @@ function mostrarPeajes(datos) {
     var cuadroFlotante = document.getElementById("cuadroFlotante");
     var peajes = Array.isArray(datos.tolls) ? datos.tolls : [];
 
-    console.log("Mostrando peajes en UI:", peajes.length, "peajes");
+    console.log("📌 Mostrando peajes en UI:", peajes.length, "peajes");
 
     if (!contenedor) return;
 
