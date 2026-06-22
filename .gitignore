@@ -1,24 +1,36 @@
 # Python
 __pycache__/
 *.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+*.egg-info/
+dist/
+build/
 .pytest_cache/
 .coverage
 htmlcov/
 
-# Entornos virtuales
-.venv/
-venv/
-env/
+# Flask
+instance/
+.webassets-cache
+.env
 
-# Editores y sistema
+# IDE
 .vscode/
 .idea/
-.DS_Store
-Thumbs.db
+*.swp
+*.swo
+*~
 
-# Archivos temporales y copias
+# Archivos de datos (opcional - si no quieres subir zonas)
+# data/zonas_rojas.json
+
+# Logs
 *.log
-*.tmp
-*.bak
-
-# Si configuracion.py contiene una clave real, no publiques el repositorio sin borrarla.

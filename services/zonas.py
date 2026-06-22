@@ -249,6 +249,11 @@ def distancia_a_ruta_m(punto, puntos_ruta):
 
 
 def zonas_intersectan_ruta(puntos_ruta, zonas):
+    """
+    Detecta qué zonas rojas intersectan la ruta.
+    puntos_ruta: lista de tuplas (lat, lng)
+    zonas: lista de diccionarios con lat, lng, radius_m
+    """
     coincidencias = []
     for zona in zonas:
         try:
@@ -256,7 +261,23 @@ def zonas_intersectan_ruta(puntos_ruta, zonas):
             radio = float(zona["radius_m"])
         except (KeyError, TypeError, ValueError):
             continue
-        distancia = distancia_a_ruta_m(centro, puntos_ruta)
+        
+        # Verificar que puntos_ruta sea una lista de tuplas
+        if not puntos_ruta or not isinstance(puntos_ruta, list):
+            continue
+            
+        # Filtrar puntos válidos
+        puntos_validos = []
+        for p in puntos_ruta:
+            if isinstance(p, tuple) and len(p) == 2:
+                puntos_validos.append(p)
+            elif isinstance(p, dict) and "lat" in p and "lng" in p:
+                puntos_validos.append((p["lat"], p["lng"]))
+        
+        if not puntos_validos:
+            continue
+            
+        distancia = distancia_a_ruta_m(centro, puntos_validos)
         if distancia <= radio:
             elemento = dict(zona)
             elemento["distance_to_route_m"] = round(distancia, 2)

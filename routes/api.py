@@ -2,7 +2,7 @@ import requests
 import logging
 from flask import Blueprint, current_app, jsonify, request
 
-from services.mapas import ErrorGoogleMaps, calcular_viaje
+from services.mapas import ErrorGeocodificacion, ErrorRuta, calcular_viaje
 from services.zonas import (
     ErrorZonaNoEncontrada,
     ErrorValidacionZona,
@@ -12,7 +12,6 @@ from services.zonas import (
     actualizar_zona,
 )
 
-# Configurar logging
 logger = logging.getLogger(__name__)
 
 plano_api = Blueprint("api", __name__, url_prefix="/api")
@@ -30,7 +29,6 @@ def estado_servidor():
 @plano_api.post("/route")
 def calcular_ruta_api():
     try:
-        # Obtener y registrar datos
         datos = request.get_json(silent=True) or {}
         logger.info(f"📥 Datos recibidos en /api/route: {datos}")
         
@@ -41,9 +39,7 @@ def calcular_ruta_api():
         ).strip().upper()
         
         logger.info(f"📍 Origen: '{origen}', Destino: '{destino}'")
-        logger.info(f"🚗 Tipo vehículo: '{tipo_vehiculo}'")
 
-        # Validar rendimiento
         try:
             rendimiento = float(
                 datos.get(
@@ -55,7 +51,6 @@ def calcular_ruta_api():
             logger.error(f"❌ Error en rendimiento: {e}")
             return respuesta_error("El rendimiento debe ser un número válido.")
 
-        # Validaciones
         if not origen or not destino:
             logger.error("❌ Origen o destino vacío")
             return respuesta_error("Debes indicar un origen y un destino.")
@@ -70,23 +65,20 @@ def calcular_ruta_api():
 
         logger.info("✅ Datos validados correctamente")
 
-        # Obtener zonas
         archivo_zonas = current_app.config.get("ARCHIVO_ZONAS")
         logger.info(f"📁 Archivo de zonas: {archivo_zonas}")
         
         zonas = listar_zonas(archivo_zonas)
         logger.info(f"📍 Zonas cargadas: {len(zonas)}")
 
-        # Calcular ruta
-        logger.info("🔄 Calculando ruta...")
+        logger.info("🔄 Calculando ruta con OpenStreetMap...")
         resultado = calcular_viaje(
             origen=origen,
             destino=destino,
             tipo_vehiculo=tipo_vehiculo,
             rendimiento_km_l=rendimiento,
             precio_gasolina_mxn=current_app.config.get("PRECIO_GASOLINA_MXN", 23.99),
-            clave_api=current_app.config.get("CLAVE_API_GOOGLE"),
-            tiempo_espera=current_app.config.get("TIEMPO_ESPERA_GOOGLE_SEGUNDOS", 35),
+            tiempo_espera=current_app.config.get("TIEMPO_ESPERA_SEGUNDOS", 20),
             zonas=zonas,
             usar_optimizacion=current_app.config.get("OPTIMIZACION_ACTIVADA", False),
         )
@@ -94,14 +86,18 @@ def calcular_ruta_api():
         logger.info("✅ Ruta calculada exitosamente")
         return jsonify({"ok": True, "data": resultado})
         
-    except ErrorGoogleMaps as error:
-        logger.error(f"❌ Error de Google Maps: {error}")
+    except ErrorGeocodificacion as error:
+        logger.error(f"❌ Error de geocodificación: {error}")
+        return respuesta_error(str(error), 400)
+        
+    except ErrorRuta as error:
+        logger.error(f"❌ Error de ruta: {error}")
         return respuesta_error(str(error), 400)
         
     except requests.RequestException as error:
         logger.error(f"❌ Error de conexión: {error}")
-        current_app.logger.exception("No fue posible contactar Google Maps")
-        return respuesta_error("No fue posible conectar con Google Maps.", 502)
+        current_app.logger.exception("No fue posible contactar el servicio de mapas")
+        return respuesta_error("No fue posible conectar con el servicio de mapas.", 502)
         
     except Exception as error:
         logger.error(f"❌ Error inesperado: {error}")
@@ -109,6 +105,7 @@ def calcular_ruta_api():
         return respuesta_error(f"Ocurrió un error inesperado: {str(error)}", 500)
 
 
+# Las rutas de zonas permanecen iguales
 @plano_api.get("/zones")
 def consultar_zonas():
     try:

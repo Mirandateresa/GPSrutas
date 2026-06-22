@@ -1,12 +1,32 @@
 import heapq
 import math
+import polyline
 
 
 RADIO_TIERRA_KM = 6371.0088
 
 
 def decodificar_polilinea(codificada):
-    """Decodifica una polyline de Google en pares (latitud, longitud)."""
+    """
+    Decodifica una polyline en pares (latitud, longitud).
+    """
+    if not codificada:
+        return []
+
+    try:
+        puntos = polyline.decode(codificada)
+        return [(float(lat), float(lng)) for lat, lng in puntos]
+    except Exception:
+        return _decodificar_polilinea_manual(codificada)
+
+
+def decodificar_polilinea_osrm(codificada):
+    """Decodifica una polyline de OSRM."""
+    return decodificar_polilinea(codificada)
+
+
+def _decodificar_polilinea_manual(codificada):
+    """Decodificación manual de polilínea."""
     if not codificada:
         return []
 
@@ -37,7 +57,7 @@ def decodificar_polilinea(codificada):
 
 
 def distancia_manhattan_km(punto_a, punto_b):
-    """Distancia Manhattan aproximada sobre la superficie terrestre."""
+    """Distancia Manhattan aproximada."""
     latitud1, longitud1 = punto_a
     latitud2, longitud2 = punto_b
     latitud_media = math.radians((latitud1 + latitud2) / 2)
@@ -91,65 +111,98 @@ def aplicar_dijkstra(grafo, origen, destino):
     return camino, distancias[destino]
 
 
-def analizar_ruta(ruta):
-    puntos = decodificar_polilinea(ruta.get("polyline", ""))
+def analizar_ruta_osm(ruta):
+    """Analiza una ruta de OSRM."""
+    puntos = ruta.get("coordinates", [])
+    
+    if not puntos:
+        polilinea = ruta.get("polyline", "")
+        if polilinea:
+            puntos_decodificados = decodificar_polilinea(polilinea)
+            puntos = [{"lat": lat, "lng": lng} for lat, lng in puntos_decodificados]
+    
+    if not puntos and "distance_km" in ruta:
+        return {
+            "points": [],
+            "manhattan_distance_km": ruta.get("distance_km", 0),
+            "node_count": 0,
+            "coordinates": [],
+        }
+    
     if len(puntos) < 2:
         return None
 
-    grafo, nodos = construir_grafo_cadena(puntos)
+    puntos_tupla = [(p["lat"], p["lng"]) for p in puntos if isinstance(p, dict)]
+    if len(puntos_tupla) < 2:
+        return None
+        
+    grafo, nodos = construir_grafo_cadena(puntos_tupla)
     camino, distancia = aplicar_dijkstra(grafo, nodos[0], nodos[-1])
+    
     return {
         "points": camino,
         "manhattan_distance_km": distancia,
         "node_count": len(camino),
+        "coordinates": [{"lat": p[0], "lng": p[1]} for p in camino],
     }
 
 
-def seleccionar_mejor_ruta(rutas):
-    """Evalúa alternativas de Google y elige la de menor peso Manhattan.
-
-    Dijkstra se ejecuta sobre la secuencia de puntos de cada alternativa.
-    Google propone las alternativas y este motor selecciona una de ellas.
-    """
+def seleccionar_mejor_ruta_osm(rutas):
+    """Evalúa rutas de OSRM y elige la de menor peso Manhattan."""
     candidatos = []
     for indice, ruta in enumerate(rutas):
-        analisis = analizar_ruta(ruta)
-        if analisis:
+        analisis = analizar_ruta_osm(ruta)
+        if analisis and analisis["manhattan_distance_km"] > 0:
             candidatos.append((analisis["manhattan_distance_km"], indice, analisis))
+        elif ruta.get("distance_km", 0) > 0:
+            candidatos.append((ruta.get("distance_km", 999999), indice, {
+                "coordinates": ruta.get("coordinates", []),
+                "distance_km": ruta.get("distance_km", 0),
+                "node_count": len(ruta.get("coordinates", [])),
+                "manhattan_distance_km": ruta.get("distance_km", 0),
+            }))
 
     if not candidatos:
-        raise ValueError("Ninguna ruta contiene una polyline válida.")
+        if rutas:
+            return {
+                "route_index": 0,
+                "coordinates": rutas[0].get("coordinates", []),
+                "distance_km": rutas[0].get("distance_km", 0),
+                "distance_m": rutas[0].get("distance_m", 0),
+                "node_count": len(rutas[0].get("coordinates", [])),
+                "algorithm": "OSRM (fallback)",
+            }
+        raise ValueError("Ninguna ruta contiene coordenadas válidas.")
 
     _, indice, analisis = min(candidatos, key=lambda elemento: elemento[0])
     return {
         "route_index": indice,
-        "coordinates": [
-            {"lat": punto[0], "lng": punto[1]}
-            for punto in analisis["points"]
-        ],
-        "distance_km": round(analisis["manhattan_distance_km"], 2),
-        "distance_m": round(analisis["manhattan_distance_km"] * 1000, 2),
-        "node_count": analisis["node_count"],
-        "algorithm": "Alternativas de Google + distancia Manhattan + Dijkstra",
+        "coordinates": analisis.get("coordinates", []),
+        "distance_km": round(analisis.get("manhattan_distance_km", 0), 2),
+        "distance_m": round(analisis.get("manhattan_distance_km", 0) * 1000, 2),
+        "node_count": analisis.get("node_count", 0),
+        "algorithm": "OSRM + distancia Manhattan + Dijkstra",
     }
 
+
+# Mantener compatibilidad
+seleccionar_mejor_ruta = seleccionar_mejor_ruta_osm
+
+
 def generar_polilinea_desde_coordenadas(coordenadas):
-    """
-    Genera una polilínea codificada a partir de coordenadas.
-    Útil para convertir rutas optimizadas de vuelta al formato de Google.
-    """
+    """Genera una polilínea codificada."""
     if not coordenadas:
         return ""
     
-    # Decodificar la polilínea de Google (debe estar implementada)
-    # O simplemente devolver las coordenadas como están
-    return coordenadas
+    try:
+        puntos = [(p["lat"], p["lng"]) for p in coordenadas if isinstance(p, dict)]
+        return polyline.encode(puntos)
+    except Exception:
+        return ""
 
 
 def calcular_distancia_aproximada(coordenadas):
-    """
-    Calcula la distancia aproximada de una ruta usando Manhattan.
-    """
+    """Calcula la distancia aproximada de una ruta."""
     if len(coordenadas) < 2:
         return 0
     
@@ -157,6 +210,8 @@ def calcular_distancia_aproximada(coordenadas):
     for i in range(len(coordenadas) - 1):
         p1 = coordenadas[i]
         p2 = coordenadas[i + 1]
+        if not isinstance(p1, dict) or not isinstance(p2, dict):
+            continue
         lat_media = math.radians((p1["lat"] + p2["lat"]) / 2)
         lat_km = abs(p2["lat"] - p1["lat"]) * 111.32
         lng_km = abs(p2["lng"] - p1["lng"]) * 111.32 * math.cos(lat_media)
@@ -166,9 +221,7 @@ def calcular_distancia_aproximada(coordenadas):
 
 
 def crear_ruta_desde_coordenadas(coordenadas, ruta_original=None):
-    """
-    Crea un diccionario de ruta a partir de coordenadas.
-    """
+    """Crea una ruta desde coordenadas."""
     if ruta_original is None:
         ruta_original = {}
     
@@ -183,7 +236,6 @@ def crear_ruta_desde_coordenadas(coordenadas, ruta_original=None):
         "algorithm": "Optimizado con Hill Climbing",
     }
     
-    # Mantener datos de la ruta original si existen
     for key in ["duration_min", "toll_cost", "toll_currency", "has_tolls"]:
         if key in ruta_original:
             ruta[key] = ruta_original[key]

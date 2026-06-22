@@ -12,9 +12,8 @@ def inicio():
 
 @plano_paginas.get("/mapa")
 def mapa():
-    """Pantalla principal del mapa"""
+    """Pantalla principal del mapa - sin API key de Google"""
     return render_template(
         "index.html",
-        clave_api_google=current_app.config["CLAVE_API_GOOGLE"],
-        rendimiento_predeterminado=current_app.config["RENDIMIENTO_PREDETERMINADO_KM_L"],
+        rendimiento_predeterminado=current_app.config.get("RENDIMIENTO_PREDETERMINADO_KM_L", 14.0),
     )

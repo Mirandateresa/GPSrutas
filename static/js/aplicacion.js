@@ -1,8 +1,9 @@
+// ============================================
+// CONFIGURACIÓN GLOBAL
+// ============================================
+
 window.GPS = {
     mapa: null,
-    geocodificador: null,
-    autocompletadoOrigen: null,
-    autocompletadoDestino: null,
     posicionOrigen: null,
     posicionDestino: null,
     lineaRuta: null,
@@ -13,6 +14,10 @@ window.GPS = {
     zonasVisibles: false,
     modoColocarZona: false,
 };
+
+// ============================================
+// UTILIDADES
+// ============================================
 
 function porId(id) {
     return document.getElementById(id);
@@ -27,8 +32,9 @@ function escaparHtml(valor) {
         .replaceAll("'", "&#039;");
 }
 
-function formatearMoneda(valor, codigoMoneda = "MXN") {
-    const numero = Number(valor || 0);
+function formatearMoneda(valor, codigoMoneda) {
+    codigoMoneda = codigoMoneda || "MXN";
+    var numero = Number(valor || 0);
     return new Intl.NumberFormat("es-MX", {
         style: "currency",
         currency: codigoMoneda,
@@ -36,8 +42,29 @@ function formatearMoneda(valor, codigoMoneda = "MXN") {
     }).format(Number.isFinite(numero) ? numero : 0);
 }
 
-async function solicitarJson(url, opciones = {}) {
-    const respuesta = await fetch(url, {
+function mostrarMensaje(texto, tipo) {
+    tipo = tipo || "info";
+    var caja = porId("cajaMensaje");
+    caja.textContent = texto;
+    caja.className = "message " + (tipo === "info" ? "" : tipo);
+    caja.style.display = 'block';
+}
+
+function ocultarMensaje() {
+    var caja = porId("cajaMensaje");
+    caja.classList.add("hidden");
+    caja.style.display = 'none';
+}
+
+function establecerCarga(activo) {
+    var boton = porId("botonCalcular");
+    boton.disabled = activo;
+    boton.textContent = activo ? "Calculando..." : "Calcular ruta";
+}
+
+async function solicitarJson(url, opciones) {
+    opciones = opciones || {};
+    var respuesta = await fetch(url, {
         ...opciones,
         headers: {
             "Content-Type": "application/json",
@@ -45,37 +72,24 @@ async function solicitarJson(url, opciones = {}) {
         },
     });
 
-    const contenido = await respuesta.json().catch(() => ({
-        ok: false,
-        error: "El servidor devolvió una respuesta no válida.",
-    }));
+    var contenido = await respuesta.json().catch(function() {
+        return { ok: false, error: "El servidor devolvió una respuesta no válida." };
+    });
 
     if (!respuesta.ok || contenido.ok === false) {
-        throw new Error(contenido.error || `Error HTTP ${respuesta.status}`);
+        throw new Error(contenido.error || "Error HTTP " + respuesta.status);
     }
     return contenido;
 }
 
-function mostrarMensaje(texto, tipo = "info") {
-    const caja = porId("cajaMensaje");
-    caja.textContent = texto;
-    caja.className = `message ${tipo === "info" ? "" : tipo}`.trim();
-}
-
-function ocultarMensaje() {
-    porId("cajaMensaje").classList.add("hidden");
-}
-
-function establecerCarga(activo) {
-    const boton = porId("botonCalcular");
-    boton.disabled = activo;
-    boton.textContent = activo ? "Calculando..." : "Calcular ruta";
-}
+// ============================================
+// CALCULAR RUTA
+// ============================================
 
 async function calcularRuta() {
-    const origen = porId("entradaOrigen").value.trim();
-    const destino = porId("entradaDestino").value.trim();
-    const rendimiento = Number(porId("entradaRendimiento").value);
+    var origen = porId("entradaOrigen").value.trim();
+    var destino = porId("entradaDestino").value.trim();
+    var rendimiento = Number(porId("entradaRendimiento").value);
 
     if (!origen || !destino) {
         mostrarMensaje("Escribe un origen y un destino.", "error");
@@ -90,7 +104,7 @@ async function calcularRuta() {
     mostrarMensaje("Calculando la ruta y analizando las zonas rojas...");
 
     try {
-        const respuesta = await solicitarJson("/api/route", {
+        var respuesta = await solicitarJson("/api/route", {
             method: "POST",
             body: JSON.stringify({
                 origin: origen,
@@ -99,42 +113,61 @@ async function calcularRuta() {
                 efficiency_km_l: rendimiento,
             }),
         });
-        window.GPSMapa.dibujarRuta(respuesta.data);
+        
+        // Dibujar la ruta en el mapa (función en mapa.js)
+        if (window.GPSMapa && typeof window.GPSMapa.dibujarRuta === 'function') {
+            window.GPSMapa.dibujarRuta(respuesta.data);
+        } else {
+            console.error("GPSMapa.dibujarRuta no está disponible");
+        }
+        
         mostrarResultado(respuesta.data);
         mostrarMensaje("Ruta calculada correctamente.", "success");
     } catch (error) {
-        mostrarMensaje(error.message, "error");
+        console.error("Error:", error);
+        mostrarMensaje(error.message || "Error al calcular la ruta", "error");
     } finally {
         establecerCarga(false);
     }
 }
 
+// ============================================
+// MOSTRAR RESULTADOS
+// ============================================
+
 function mostrarResultado(datos) {
+    console.log("Mostrando resultado:", datos);
+    
     porId("panelResultados").classList.remove("hidden");
-    porId("valorDistancia").textContent = `${Number(datos.distance_km).toFixed(2)} km`;
-    porId("valorDuracion").textContent = `${Math.round(Number(datos.duration_min))} min`;
-    porId("valorLitros").textContent = `${Number(datos.estimated_liters).toFixed(2)} L`;
+    porId("valorDistancia").textContent = Number(datos.distance_km).toFixed(2) + " km";
+    porId("valorDuracion").textContent = Math.round(Number(datos.duration_min)) + " min";
+    porId("valorLitros").textContent = Number(datos.estimated_liters).toFixed(2) + " L";
     porId("valorCostoCombustible").textContent = formatearMoneda(datos.fuel_cost_mxn);
     porId("valorCostoPeajes").textContent = formatearMoneda(
         datos.toll_cost,
-        datos.toll_currency || "MXN",
+        datos.toll_currency || "MXN"
     );
     porId("valorCostoTotal").textContent = formatearMoneda(datos.total_cost_mxn);
 
-    const origen = datos.origin?.address || datos.origin?.query || "Origen";
-    const destino = datos.destination?.address || datos.destination?.query || "Destino";
-    porId("descripcionRuta").textContent = `${origen} → ${destino}`;
+    var origen = datos.origin?.address || datos.origin?.query || "Origen";
+    var destino = datos.destination?.address || datos.destination?.query || "Destino";
+    porId("descripcionRuta").textContent = origen + " → " + destino;
+    
     mostrarZonasRojas(datos.red_zones || []);
     mostrarPeajes(datos);
 }
 
+// ============================================
+// MOSTRAR ZONAS ROJAS
+// ============================================
+
 function mostrarZonasRojas(zonas) {
-    const bloque = porId("resultadoZonasRojas");
-    const insignia = porId("insigniaAdvertenciaZona");
-    const lista = porId("listaZonasRojas");
+    var bloque = porId("resultadoZonasRojas");
+    var insignia = porId("insigniaAdvertenciaZona");
+    var lista = porId("listaZonasRojas");
     lista.innerHTML = "";
 
-    if (!zonas.length) {
+    if (!zonas || zonas.length === 0) {
         bloque.classList.add("hidden");
         insignia.classList.add("hidden");
         return;
@@ -142,50 +175,73 @@ function mostrarZonasRojas(zonas) {
 
     bloque.classList.remove("hidden");
     insignia.classList.remove("hidden");
-    zonas.forEach((zona) => {
-        const elemento = document.createElement("li");
-        const lugar = [zona.municipality, zona.state].filter(Boolean).join(", ");
-        elemento.textContent = `${zona.name}${lugar ? ` — ${lugar}` : ""}`;
+    zonas.forEach(function(zona) {
+        var elemento = document.createElement("li");
+        var lugar = [zona.municipality, zona.state].filter(Boolean).join(", ");
+        elemento.textContent = zona.name + (lugar ? " — " + lugar : "");
         lista.appendChild(elemento);
     });
 }
 
-function mostrarPeajes(datos) {
-    const contenedor = porId("listaPeajes");
-    const peajes = Array.isArray(datos.tolls) ? datos.tolls : [];
+// ============================================
+// MOSTRAR PEAJES
+// ============================================
 
-    if (!datos.has_tolls) {
+function mostrarPeajes(datos) {
+    var contenedor = porId("listaPeajes");
+    var peajes = Array.isArray(datos.tolls) ? datos.tolls : [];
+
+    console.log("Mostrando peajes en UI:", peajes.length, "peajes");
+
+    if (!datos.has_tolls || peajes.length === 0) {
         contenedor.innerHTML = '<p class="small-text">La ruta seleccionada no reporta peajes.</p>';
         return;
     }
 
-    const advertencias = (datos.toll_warnings || [])
-        .map((texto) => `<p class="small-text">${escaparHtml(texto)}</p>`)
-        .join("");
-
-    const elementos = peajes.map((peaje) => {
-        const detalle = peaje.address || peaje.instruction || "";
-        return `
-            <article class="toll-item">
-                <strong>${escaparHtml(peaje.name || "Caseta de cobro")}</strong>
-                ${detalle ? `<span>${escaparHtml(detalle)}</span>` : ""}
-            </article>`;
+    var elementos = peajes.map(function(peaje, index) {
+        var detalle = peaje.address || peaje.instruction || "";
+        var precio = peaje.price ? ' - $' + Number(peaje.price).toFixed(2) + ' MXN' : "";
+        var estimado = peaje.estimated_location ? ' 📍 estimado' : "";
+        var lat = peaje.lat ? peaje.lat : 0;
+        var lng = peaje.lng ? peaje.lng : 0;
+        
+        // Solo mostrar el número de peaje si no tiene nombre
+        var nombre = peaje.name || "Peaje #" + (index + 1);
+        
+        return '<article class="toll-item" style="margin-bottom:8px;padding:10px 14px;border-radius:12px;background:#FAF5EF;border:1px solid #E8D5C4;">' +
+            '<strong style="color:#b45309;">🛣️ ' + escaparHtml(nombre) + '</strong>' +
+            (detalle ? '<br><span style="font-size:0.85rem;color:#5C4033;">' + escaparHtml(detalle) + '</span>' : '') +
+            (precio ? '<br><span style="font-weight:bold;color:#2563eb;">' + precio + '</span>' : '') +
+            (estimado ? '<br><span style="font-size:0.7rem;color:#d97706;">' + estimado + '</span>' : '') +
+            (lat && lng ? '<br><span style="font-size:0.65rem;color:#999;">📍 ' + lat.toFixed(4) + ', ' + lng.toFixed(4) + '</span>' : '') +
+            '</article>';
     }).join("");
 
-    const mensajeSinCasetas = '<p class="small-text">Se detectaron peajes, pero no fue posible identificar cada caseta.</p>';
-    contenedor.innerHTML = `${elementos || mensajeSinCasetas}${advertencias}`;
+    var advertencias = (datos.toll_warnings || [])
+        .map(function(texto) { return '<p class="small-text" style="color:#d97706;">⚠️ ' + escaparHtml(texto) + '</p>'; })
+        .join("");
+
+    contenedor.innerHTML = elementos + advertencias;
 }
+
+// ============================================
+// LIMPIAR
+// ============================================
 
 function limpiarOrigen() {
     porId("entradaOrigen").value = "";
     GPS.posicionOrigen = null;
-    window.GPSMapa?.limpiarRuta();
+    if (window.GPSMapa && typeof window.GPSMapa.limpiarRuta === 'function') {
+        window.GPSMapa.limpiarRuta();
+    }
 }
 
 function limpiarDestino() {
     porId("entradaDestino").value = "";
     GPS.posicionDestino = null;
-    window.GPSMapa?.limpiarRuta();
+    if (window.GPSMapa && typeof window.GPSMapa.limpiarRuta === 'function') {
+        window.GPSMapa.limpiarRuta();
+    }
 }
 
 function limpiarTodo() {
@@ -194,6 +250,10 @@ function limpiarTodo() {
     porId("panelResultados").classList.add("hidden");
     ocultarMensaje();
 }
+
+// ============================================
+// PANEL
+// ============================================
 
 function cerrarPanel() {
     porId("panelControl").classList.add("closed");
@@ -205,27 +265,49 @@ function abrirPanel() {
     porId("botonAbrirPanel").classList.add("hidden");
 }
 
-window.gm_authFailure = function () {
-    mostrarMensaje(
-        "La API key fue rechazada. Revisa configuracion.py y los servicios habilitados.",
-        "error",
-    );
-};
+// ============================================
+// INICIALIZAR EVENTOS
+// ============================================
 
-document.addEventListener("DOMContentLoaded", () => {
-    porId("botonCalcular").addEventListener("click", calcularRuta);
-    porId("botonLimpiarTodo").addEventListener("click", limpiarTodo);
-    porId("botonLimpiarOrigen").addEventListener("click", limpiarOrigen);
-    porId("botonLimpiarDestino").addEventListener("click", limpiarDestino);
-    porId("botonCerrarPanel").addEventListener("click", cerrarPanel);
-    porId("botonAbrirPanel").addEventListener("click", abrirPanel);
+document.addEventListener("DOMContentLoaded", function() {
+    console.log("DOM cargado - inicializando eventos de aplicacion.js");
+    
+    // Botones principales
+    var botonCalcular = porId("botonCalcular");
+    var botonLimpiarTodo = porId("botonLimpiarTodo");
+    var botonLimpiarOrigen = porId("botonLimpiarOrigen");
+    var botonLimpiarDestino = porId("botonLimpiarDestino");
+    var botonCerrarPanel = porId("botonCerrarPanel");
+    var botonAbrirPanel = porId("botonAbrirPanel");
+    
+    if (botonCalcular) botonCalcular.addEventListener("click", calcularRuta);
+    if (botonLimpiarTodo) botonLimpiarTodo.addEventListener("click", limpiarTodo);
+    if (botonLimpiarOrigen) botonLimpiarOrigen.addEventListener("click", limpiarOrigen);
+    if (botonLimpiarDestino) botonLimpiarDestino.addEventListener("click", limpiarDestino);
+    if (botonCerrarPanel) botonCerrarPanel.addEventListener("click", cerrarPanel);
+    if (botonAbrirPanel) botonAbrirPanel.addEventListener("click", abrirPanel);
 
-    [porId("entradaOrigen"), porId("entradaDestino")].forEach((entrada) => {
-        entrada.addEventListener("keydown", (evento) => {
+    // Enter en campos de texto
+    var entradaOrigen = porId("entradaOrigen");
+    var entradaDestino = porId("entradaDestino");
+    
+    if (entradaOrigen) {
+        entradaOrigen.addEventListener("keydown", function(evento) {
             if (evento.key === "Enter") {
                 evento.preventDefault();
                 calcularRuta();
             }
         });
-    });
+    }
+    
+    if (entradaDestino) {
+        entradaDestino.addEventListener("keydown", function(evento) {
+            if (evento.key === "Enter") {
+                evento.preventDefault();
+                calcularRuta();
+            }
+        });
+    }
+
+    console.log("Eventos inicializados correctamente");
 });
